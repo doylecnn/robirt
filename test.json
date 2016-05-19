@@ -1,0 +1,62 @@
+[
+  {
+    "method": "GroupMessage",
+    "params": {
+      "subtype": 1,
+      "sendtime": 1463560239,
+      "groupnum": 147798016,
+      "qqnum": 331235265,
+      "anonymousname": "",
+      "message": "[CQ:image,file=0177EE78787B2EEBF379D9EE690E52CF.jpg]",
+      "font": 7082120
+    }
+  },
+  {
+    "method": "GroupMessage",
+    "params": {
+      "subtype": 1,
+      "sendtime": 1463560240,
+      "groupnum": 171712942,
+      "qqnum": 971620290,
+      "anonymousname": "",
+      "message": "你们继续嗨",
+      "font": 7151008
+    }
+  },
+  {
+    "method": "GroupMessage",
+    "params": {
+      "subtype": 1,
+      "sendtime": 1463560243,
+      "groupnum": 171712942,
+      "qqnum": 56994961,
+      "anonymousname": "",
+      "message": "群数量又变成99了",
+      "font": 7082248
+    }
+  },
+  {
+    "method": "GroupMessage",
+    "params": {
+      "subtype": 1,
+      "sendtime": 1463560245,
+      "groupnum": 171712942,
+      "qqnum": 56994961,
+      "anonymousname": "",
+      "message": "机器人",
+      "font": 7083208
+    }
+  },
+  {
+    "method": "GroupMessage",
+    "params": {
+      "subtype": 1,
+      "sendtime": 1463560241,
+      "groupnum": 417100872,
+      "qqnum": 961029850,
+      "anonymousname": "",
+      "message": "可怜",
+      "font": 68042208
+    }
+  }
+]

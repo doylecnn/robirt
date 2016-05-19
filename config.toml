@@ -1,0 +1,5 @@
+[superuser]
+qqnumber=ÄãµÄqqºÅ
+
+[database]
+dbname="dbname=pupubird user=robirt host=127.0.0.1 password=robirt sslmode=disable"

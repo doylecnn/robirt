@@ -1,0 +1,93 @@
+{
+  "ret": 1,
+  "apiver": 9,
+  "appid": "me.robirt.rust.welcome",
+  "name": "rust demo",
+  "version": "0.0.1",
+  "version_id": 1,
+  "author": "evshiron, Diberium",
+  "description": "The daughter of Diberium",
+  "event": [
+    {
+      "id": 1,
+      "type": 21,
+      "name": "私聊消息处理",
+      "function": "PrivateMessageHandler",
+      "priority": 30000
+    },
+    {
+      "id": 2,
+      "type": 2,
+      "name": "群聊消息处理",
+      "function": "GroupMessageHandler",
+      "priority": 30000
+    },
+    {
+      "id": 3,
+      "type": 102,
+      "name": "群成员减少事件处理",
+      "function": "GroupMemberLeaveHandler",
+      "priority": 30000
+    },
+    {
+      "id": 4,
+      "type": 103,
+      "name": "群成员增加事件处理",
+      "function": "GroupMemberJoinHandler",
+      "priority": 30000
+    },
+    {
+      "id": 5,
+      "type": 302,
+      "name": "加群",
+      "function": "RequestAddGroupHandler",
+      "priority": 30000
+    },
+    {
+      "id": 6,
+      "type": 301,
+      "name": "加群",
+      "function": "RequestAddFriendHandler",
+      "priority": 30000
+    },
+    {
+        "id":7,
+        "type":1001,
+        "name":"酷Q启动事件",
+        "priority":30000,
+        "function":"CQPStartupHandler"
+    },
+    {
+        "id":8,
+        "type":1002,
+        "name":"酷Q关闭事件",
+        "priority":30000,
+        "function":"CQPExitHandler"
+    },
+    {
+        "id":9,
+        "type":1003,
+        "name":"应用已被启用",
+        "priority":30000,
+        "function":"EnableHandler"
+    },
+    {
+        "id":10,
+        "type":1004,
+        "name":"应用将被停用",
+        "priority":30000,
+        "function":"DisableHandler"
+    }
+  ],
+  "auth": [
+    20,
+    101,
+    106,
+    121,
+    127,
+    130,
+    131,
+    150,
+    151
+  ]
+}
