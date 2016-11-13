@@ -42,7 +42,8 @@ func event_private_message(p Params) {
 					reportError(err)
 					return
 				}
-				for _, group := range groups {
+				groups.RWLocker.RLock()
+				for _, group := range groups.Map {
 					row := trans.QueryRow("select count(1) from replies where key = $1 and reply = $2 and group_id = $3", key, value, group.Id)
 					var count int
 					row.Scan(&count)
@@ -54,6 +55,7 @@ func event_private_message(p Params) {
 						}
 					}
 				}
+				groups.RWLocker.RUnlock()
 				trans.Commit()
 				sendPrivateMessage(qqnum, fmt.Sprintf("在 所有 群，有人说 “%s” 我就说 “%s”", key, value))
 			}
@@ -66,11 +68,15 @@ func event_private_message(p Params) {
 			sendPrivateMessage(qqnum, err.Error())
 			return
 		}
-		if g, group_exists := groups[groupnum]; group_exists {
+		groups.RWLocker.RLock()
+		if g, group_exists := groups.Map[groupnum]; group_exists {
 			group_id = g.Id
+			groups.RWLocker.RUnlock()
 		} else {
+			groups.RWLocker.RUnlock()
 			return
 		}
+		
 		kv := tmp[2:]
 		if length := message_length(kv[2]); length > 600 {
 			log.Println("too long!", length)
@@ -129,11 +135,15 @@ func event_private_message(p Params) {
 			sendPrivateMessage(qqnum, err.Error())
 			return
 		}
-		if g, group_exists := groups[groupnum]; group_exists {
+		groups.RWLocker.RLock()
+		if g, group_exists := groups.Map[groupnum]; group_exists {
 			group_id = g.Id
+			groups.RWLocker.RUnlock()
 		} else {
+			groups.RWLocker.RUnlock()
 			return
 		}
+
 		kv := tmp[2:]
 		trans, err := db.Begin()
 		if err != nil {
@@ -167,7 +177,9 @@ func event_private_message(p Params) {
 						sendPrivateMessage(qqnum, err.Error())
 						return
 					}
-					group, group_exists := groups[groupnum]
+					groups.RWLocker.RLock()
+					group, group_exists := groups.Map[groupnum]
+					groups.RWLocker.RUnlock()
 					if group_exists {
 						msg := s[1]
 						if at_regex.MatchString(msg) {
@@ -186,7 +198,9 @@ func event_private_message(p Params) {
 					sendPrivateMessage(qqnum, err.Error())
 					return
 				}
-				group, group_exists := groups[groupnum]
+				groups.RWLocker.RLock()
+				group, group_exists := groups.Map[groupnum]
+				groups.RWLocker.RUnlock()
 				if group_exists {
 					sendGroupMessage(group.GroupNo, "我决定离开，再见~")
 					leaveGroup(group.GroupNo, LoginQQ)
@@ -198,11 +212,13 @@ func event_private_message(p Params) {
 				go func() {
 					rand.Seed(time.Now().Unix())
 
-					for _, group := range groups {
+					groups.RWLocker.RLock()
+					for _, group := range groups.Map {
 						sendGroupMessage(group.GroupNo, strings.TrimSpace(message[10:]))
 						d := time.Duration(rand.Intn(3)+3) * time.Second
 						time.Sleep(d)
 					}
+					groups.RWLocker.RUnlock()
 				}()
 			} else {
 				sendPrivateMessage(qqnum, message)

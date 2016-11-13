@@ -16,10 +16,5 @@ func eventToken(p Params) {
 	Cookies, _ = p.GetString("cookies")
 	fmt.Printf("LoginQQ:%d, Csrf_token:%d, Cookies:%s\n", LoginQQ, Csrf_token, Cookies)
 	groups = GetGroups(LoginQQ, Cookies, Csrf_token)
-	members = make(map[int64]map[int64]Member, len(groups))
-
-	for _, group := range groups {
-		members[group.GroupNo] = GetGroupMembers(group, LoginQQ, Cookies, Csrf_token)
-	}
 	log.Println("refresh groups info")
 }

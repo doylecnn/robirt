@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"sync"
 )
 
 type tomlConfig struct {
@@ -20,12 +21,6 @@ type databaseConfig struct {
 type Notification struct {
 	Method string `json:"method"`
 	Params Params `json:"params"`
-}
-
-type Group struct {
-	Id        int64
-	GroupNo   int64
-	GroupName string
 }
 
 type Params map[string]json.RawMessage
@@ -85,4 +80,26 @@ type Member struct {
 	Group_Id int64
 	Nickname string
 	Rights   int
+}
+
+type Users struct{
+	RWLocker sync.RWMutex
+	Map map[int64]User
+}
+
+type Members struct{
+	RWLocker sync.RWMutex
+	Map map[int64]Member
+}
+
+type Group struct {
+	Id        int64
+	GroupNo   int64
+	GroupName string
+	Members *Members
+}
+
+type Groups struct{
+	RWLocker sync.RWMutex
+	Map map[int64]Group
 }

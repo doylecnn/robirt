@@ -3,11 +3,11 @@ package main
 import (
 	"regexp"
 	"time"
+	"sync"
 )
 
-var members map[int64]map[int64]Member
-var groups map[int64]Group
-var users map[int64]User
+var groups *Groups = &Groups{sync.RWMutex{},make(map[int64]Group)}
+var users *Users = &Users{sync.RWMutex{},make(map[int64]User)}
 var timeouts map[string]time.Time = make(map[string]time.Time)
 var robirt_last_active map[int64]time.Time = make(map[int64]time.Time)
 

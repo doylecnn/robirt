@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"sync"
 )
 
 func (p Params) GetInt64(key string) (number int64, err error) {
@@ -50,7 +51,7 @@ func json_trans(json string) string {
 	return json
 }
 
-func GetGroups(loginQQ int64, cookies string, csrf_token int64) (groups map[int64]Group) {
+func GetGroups(loginQQ int64, cookies string, csrf_token int64) (groups *Groups) {
 	url_addr := "http://qun.qzone.qq.com/cgi-bin/get_group_list?groupcount=4&count=4&callbackFun=_GetGroupPortal&uin=" + strconv.FormatInt(loginQQ, 10) + "&g_tk=" + strconv.FormatInt(csrf_token, 10) + "&ua=Mozilla%2F5.0%20"
 	//log.Println(url_addr)
 	//log.Println(cookies)
@@ -135,25 +136,31 @@ func GetGroups(loginQQ int64, cookies string, csrf_token int64) (groups map[int6
 		}
 		defer rows.Close()
 		if groups == nil {
-			groups = make(map[int64]Group)
+			groups = &Groups{sync.RWMutex{},make(map[int64]Group)}
 		}
 		i := 0
+		groups.RWLocker.Lock()
 		for rows.Next() {
 			var groupname string
 			var group_id int64
 			var groupno int64
 			rows.Scan(&group_id, &groupno, &groupname)
-			group := Group{group_id, groupno, groupname}
-			groups[groupno] = group
+			group := Group{}
+			group.Id = group_id
+			group.GroupNo = groupno
+			group.GroupName = groupname
+			group.Members = GetGroupMembers(group, LoginQQ, Cookies, Csrf_token)
+			groups.Map[groupno] = group
 			log.Printf("%d: %s[%d]", i, group.GroupName, groupno)
 			i++
 		}
+		groups.RWLocker.Unlock()
 	}
 	return
 }
 
-func GetGroupMembers(group Group, loginQQ int64, cookies string, csrf_token int64) (nicknames_in_group map[int64]Member) {
-	nicknames_in_group = make(map[int64]Member, 100)
+func GetGroupMembers(group Group, loginQQ int64, cookies string, csrf_token int64) (nicknames_in_group *Members) {
+	nicknames_in_group = &Members{sync.RWMutex{},make(map[int64]Member)}
 
 	url_addr := fmt.Sprintf("http://qun.qzone.qq.com/cgi-bin/get_group_member?callbackFun=_GroupMember&uin=%d&groupid=%d&neednum=1&r=0.5421284231954122&g_tk=%d&ua=Mozilla%2F4.0%20(compatible%3B%20MSIE%207.0%3B%20Windows%20NT%205.1%3B%20Trident%2F4.0)", loginQQ, group.GroupNo, csrf_token)
 	//log.Println(url_addr)
@@ -262,6 +269,7 @@ func GetGroupMembers(group Group, loginQQ int64, cookies string, csrf_token int6
 			panic(err)
 		}
 		defer rows.Close()
+		nicknames_in_group.RWLocker.Lock()
 		for rows.Next() {
 			var nickname string
 			var userqq, user_id, member_id int64
@@ -270,8 +278,9 @@ func GetGroupMembers(group Group, loginQQ int64, cookies string, csrf_token int6
 			if err != nil {
 				panic(err)
 			}
-			nicknames_in_group[userqq] = Member{member_id, user_id, group.Id, nickname, rights}
+			nicknames_in_group.Map[userqq] = Member{member_id, user_id, group.Id, nickname, rights}
 		}
+		nicknames_in_group.RWLocker.Unlock()
 	}
 	return
 }
@@ -342,37 +351,50 @@ func message_length(message string) (lenght int) {
 }
 
 func get_group_id(groupnum int64) (groupid int64, err error) {
-	if group, ok := groups[groupnum]; ok {
+	groups.RWLocker.RLock()
+	if group, ok := groups.Map[groupnum]; ok {
 		groupid = group.Id
+		groups.RWLocker.RUnlock()
 		return
 	}
+	groups.RWLocker.RUnlock()
 	row := db.QueryRow("select id, name from groups where group_number = $1", groupnum)
 	var groupName string
 	err = row.Scan(&groupid, &groupName)
-	g := Group{groupid, groupnum, groupName}
+	g := Group{}
+	g.Id = groupid
+	g.GroupNo = groupnum
+	g.GroupName = groupName
+	g.Members = GetGroupMembers(g, LoginQQ, Cookies, Csrf_token)
 	if groups == nil {
-		groups = make(map[int64]Group)
+		groups = &Groups{}
 	}
-	groups[groupnum] = g
+	groups.RWLocker.Lock()
+	groups.Map[groupnum] = g
+	groups.RWLocker.Unlock()
 	return
 }
 
 func get_user_id(qqnum int64) (userid int64, err error) {
-
-	if user, ok := users[qqnum]; ok {
+	users.RWLocker.RLock()
+	if user, ok := users.Map[qqnum]; ok {
 		userid = user.Id
+		users.RWLocker.RUnlock()
 		return
 	}
+	users.RWLocker.RUnlock()
 	row := db.QueryRow("select id, qq_name from users where qq_number = $1", qqnum)
 	var name sql.NullString
 	err = row.Scan(&userid, &name)
 	if users == nil {
-		users = make(map[int64]User)
+		users = &Users{}
 	}
+	users.RWLocker.Lock()
 	if name.Valid {
-		users[qqnum] = User{userid, qqnum, name.String}
+		users.Map[qqnum] = User{userid, qqnum, name.String}
 	} else {
-		users[qqnum] = User{userid, qqnum, ""}
+		users.Map[qqnum] = User{userid, qqnum, ""}
 	}
+	users.RWLocker.Unlock()
 	return
 }

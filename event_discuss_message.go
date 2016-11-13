@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func del_replies(key, reply string, group_id, groupnum int64) {
+func del_disc_replies(key, reply string, group_id, groupnum int64) {
 	trans, err := db.Begin()
 	if err != nil {
 		reportError(err)
@@ -30,7 +30,7 @@ func del_replies(key, reply string, group_id, groupnum int64) {
 	}
 }
 
-func list_replies(key string, group_id, groupnum int64) {
+func list_disc_replies(key string, group_id, groupnum int64) {
 	rows, err := db.Query("select reply from replies where key = $1 and group_id = $2", key, group_id)
 	if err != nil {
 		reportError(err)
@@ -60,7 +60,7 @@ func list_replies(key string, group_id, groupnum int64) {
 	}
 }
 
-func tech_replies(key, reply string, userid, groupid, groupnum int64) {
+func tech_disc_replies(key, reply string, userid, groupid, groupnum int64) {
 	if length := message_length(reply); length > 600 {
 		log.Println("too long!", length)
 		sendGroupMessage(groupnum, "太长记不住！")
@@ -97,7 +97,7 @@ func tech_replies(key, reply string, userid, groupid, groupnum int64) {
 	}
 }
 
-func event_group_message(p Params) {
+func event_discuss_message(p Params) {
 	message, _ := p.GetString("message")
 	anonymousname, _ := p.GetString("anonymousname")
 	qqnum, _ := p.GetInt64("qqnum")
@@ -109,13 +109,14 @@ func event_group_message(p Params) {
 		nickname = "[匿名]" + anonymousname
 	} else {
 		groups.RWLocker.RLock()
-		group:=groups.Map[groupnum]
+		group := groups.Map[groupnum]
 		groups.RWLocker.RUnlock()
 		members := group.Members
 		members.RWLocker.RLock()
 		nickname = members.Map[qqnum].Nickname
 		members.RWLocker.RUnlock()
 	}
+
 	var group Group
 	groups.RWLocker.RLock()
 	for _, g := range groups.Map {
@@ -125,6 +126,7 @@ func event_group_message(p Params) {
 		}
 	}
 	groups.RWLocker.RUnlock()
+
 	fmt.Printf("%s(%d)-%s(%d):\n%s\n", group.GroupName, groupnum, nickname, qqnum, message)
 
 	if "!help" == message || "！help" == message || "/help" == message {
