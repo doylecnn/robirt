@@ -78,15 +78,15 @@ func event_private_message(p Params) {
 		}
 		
 		kv := tmp[2:]
-		if length := message_length(kv[2]); length > 600 {
+		if length := message_length(kv[1]); length > 600 {
 			log.Println("too long!", length)
 			sendGroupMessage(qqnum, "太长记不住！")
 		} else {
-			key := strings.TrimSpace(kv[1])
+			key := strings.TrimSpace(kv[0])
 			if len(key) < 2 {
 				sendGroupMessage(qqnum, "触发字太短了！")
 			} else {
-				value := kv[2]
+				value := kv[1]
 				trans, err := db.Begin()
 				if err != nil {
 					reportError(err)
@@ -150,7 +150,7 @@ func event_private_message(p Params) {
 			reportError(err)
 			return
 		}
-		sql_result, err := trans.Exec("delete from replies where key = $1 and reply = $2 and group_id = $3", kv[1], kv[2], group_id)
+		sql_result, err := trans.Exec("delete from replies where key = $1 and reply = $2 and group_id = $3", kv[0], kv[1], group_id)
 		if err != nil {
 			reportError(err)
 			trans.Rollback()
@@ -158,7 +158,7 @@ func event_private_message(p Params) {
 		}
 		trans.Commit()
 		if affect_rows, _ := sql_result.RowsAffected(); affect_rows > 0 {
-			sendPrivateMessage(qqnum, fmt.Sprintf("在 %d 这个群，已删除：key=%s, value=%s", group_id, kv[1], kv[2]))
+			sendPrivateMessage(qqnum, fmt.Sprintf("在 %d 这个群，已删除：key=%s, value=%s", group_id, kv[0], kv[1]))
 		}
 	} else {
 		if qqnum != config.SuperUser.QQNumber {

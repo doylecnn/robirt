@@ -4,14 +4,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 	"sync"
+	"time"
 )
 
 func (p Params) GetInt64(key string) (number int64, err error) {
@@ -39,6 +39,25 @@ func reportError(err error) {
 		err_msg := err.Error()
 		log.Println(err_msg)
 		sendPrivateMessage(config.SuperUser.QQNumber, err_msg)
+		if err, ok := err.(*pq.Error); ok {
+			log.Println("pq error:", err.Code.Name())
+			sendPrivateMessage(config.SuperUser.QQNumber, fmt.Sprintf("Severity:%s\nMessage:%s\nDetail:%s\nHint:%s\nPosition:%s\nInternalPosition:%s\nInternalQuery:%s\nWhere:%s\nSchema:%s\nTable:%s\nDataTypeName:%s\nConstraint:%s\nFile:%s\nLine:%s\nRoutine:%s", err.Severity,
+				err.Message,
+				err.Detail,
+				err.Hint,
+				err.Position,
+				err.InternalPosition,
+				err.InternalQuery,
+				err.Where,
+				err.Schema,
+				err.Table,
+				err.Column,
+				err.DataTypeName,
+				err.Constraint,
+				err.File,
+				err.Line,
+				err.Routine))
+		}
 	}
 }
 
@@ -136,7 +155,7 @@ func GetGroups(loginQQ int64, cookies string, csrf_token int64) (groups *Groups)
 		}
 		defer rows.Close()
 		if groups == nil {
-			groups = &Groups{sync.RWMutex{},make(map[int64]Group)}
+			groups = &Groups{sync.RWMutex{}, make(map[int64]Group)}
 		}
 		i := 0
 		groups.RWLocker.Lock()
@@ -160,7 +179,7 @@ func GetGroups(loginQQ int64, cookies string, csrf_token int64) (groups *Groups)
 }
 
 func GetGroupMembers(group Group, loginQQ int64, cookies string, csrf_token int64) (nicknames_in_group *Members) {
-	nicknames_in_group = &Members{sync.RWMutex{},make(map[int64]Member)}
+	nicknames_in_group = &Members{sync.RWMutex{}, make(map[int64]Member)}
 
 	url_addr := fmt.Sprintf("http://qun.qzone.qq.com/cgi-bin/get_group_member?callbackFun=_GroupMember&uin=%d&groupid=%d&neednum=1&r=0.5421284231954122&g_tk=%d&ua=Mozilla%2F4.0%20(compatible%3B%20MSIE%207.0%3B%20Windows%20NT%205.1%3B%20Trident%2F4.0)", loginQQ, group.GroupNo, csrf_token)
 	//log.Println(url_addr)
