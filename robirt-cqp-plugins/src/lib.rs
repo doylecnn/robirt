@@ -263,29 +263,29 @@ fn handle_client(mut stream :TcpStream){
             };
             let json_value: Value = serde_json::from_str(request.as_str()).unwrap();
             let notification = json_value.as_object().unwrap();
-            let method = notification.get("method").unwrap().as_string().unwrap();
+            let method = &(notification.get("method").unwrap().to_string())[..];
             let params = notification.get("params").unwrap().as_object().unwrap();
             match method{
                 "SendPrivateMessage" => {
-                    let message = params.get("message").unwrap().as_string().unwrap();
+                    let message = &(params.get("message").unwrap().to_string())[..];
                     let qqnum = params.get("qqnum").unwrap().as_i64().unwrap();
                     unsafe{
                         cqpapi::CQ_sendPrivateMsg(Pupurium.auth_code, qqnum, gbk!(message));
                     };
                 }
                 "SendGroupMessage" => {
-                    let message = params.get("message").unwrap().as_string().unwrap();
+                    let message = &(params.get("message").unwrap().to_string())[..];
                     let groupnum = params.get("groupnum").unwrap().as_i64().unwrap();
                     unsafe{
                         cqpapi::CQ_sendGroupMsg(Pupurium.auth_code, groupnum, gbk!(message));
                     };
                 }
                 "SendDiscussionMessage" => {
-                    let message = params.get("message").unwrap().as_string().unwrap();
-                    let discussion_num = params.get("discussionnum").unwrap().as_i64().unwrap();
-                    unsafe{
-                        cqpapi::CQ_sendDiscussionMsg(Pupurium.auth_code, discussion_num, gbk!(message));
-                    };
+                   let message = &(params.get("message").unwrap().to_string())[..];
+                   let discussion_num = params.get("discussionnum").unwrap().as_i64().unwrap();
+                   unsafe{
+                       cqpapi::CQ_sendDiscussMsg(Pupurium.auth_code, discussion_num, gbk!(message));
+                   };
                 }
                 "GetToken" => {
                     let csrf_token = unsafe{
@@ -303,18 +303,18 @@ fn handle_client(mut stream :TcpStream){
                     send_notification(notification);
                 }
                 "FriendAdd" => {
-                    let response_flag = params.get("responseFlag").unwrap().as_string().unwrap();
+                    let response_flag = &(params.get("responseFlag").unwrap().to_string())[..];
                     let accept = params.get("accept").unwrap().as_i64().unwrap() as i32;
-                    let memo = params.get("memo").unwrap().as_string().unwrap();
+                    let memo = &(params.get("memo").unwrap().to_string())[..];
                     unsafe{
                         cqpapi::CQ_setFriendAddRequest(Pupurium.auth_code, gbk!(response_flag), accept, gbk!(memo));
                     };
                 }
                 "GroupAdd" => {
-                    let response_flag = params.get("responseFlag").unwrap().as_string().unwrap();
+                    let response_flag = &(params.get("responseFlag").unwrap().to_string())[..];
                     let accept = params.get("accept").unwrap().as_i64().unwrap() as i32;
                     let sub_type = params.get("subType").unwrap().as_i64().unwrap() as i32;
-                    let reason = params.get("reason").unwrap().as_string().unwrap();
+                    let reason = &(params.get("reason").unwrap().to_string())[..];
                     unsafe{
                         cqpapi::CQ_setGroupAddRequestV2(Pupurium.auth_code, gbk!(response_flag), sub_type, accept, gbk!(reason));
                     };
