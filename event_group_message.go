@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 
 	"strings"
@@ -62,7 +61,7 @@ func list_replies(key string, group_id, groupnum int64) {
 
 func tech_replies(key, reply string, userid, groupid, groupnum int64) {
 	if length := message_length(reply); length > 600 {
-		log.Println("too long!", length)
+		logger.Println("too long!", length)
 		sendGroupMessage(groupnum, "太长记不住！")
 	} else {
 		if len(key) < 2 {
@@ -92,7 +91,7 @@ func tech_replies(key, reply string, userid, groupid, groupnum int64) {
 				}
 				trans.Commit()
 			}
-			log.Println(key)
+			logger.Println(key)
 		}
 	}
 }
@@ -175,7 +174,7 @@ func event_group_message(p Params) {
 			for rows.Next() {
 				var resp string
 				if err := rows.Scan(&resp); err != nil {
-					log.Fatal(err)
+					logger.Fatal(err)
 				}
 				if message_length(resp) < 600 {
 					list = append(list, resp)

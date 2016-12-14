@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net"
 )
 
@@ -58,12 +57,12 @@ func sendNotification(notification string) {
 	if client_conn == nil {
 		r_addr, err := net.ResolveTCPAddr("tcp4", "127.0.0.1:7000")
 		if err != nil {
-			log.Printf("ResolveTCPAddr Error: %v\n", err)
+			logger.Printf("ResolveTCPAddr Error: %v\n", err)
 			return
 		}
 		client_conn, err = net.DialTCP("tcp4", nil, r_addr)
 		if err != nil {
-			log.Printf("Net DialTCP Error: %v\n", err)
+			logger.Printf("Net DialTCP Error: %v\n", err)
 			return
 		}
 	}

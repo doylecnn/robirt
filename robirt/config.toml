@@ -1,0 +1,8 @@
+[superuser]
+qqnumber=qq number
+
+[database]
+dbname="dbname=databasename user=username host=127.0.0.1 password=password sslmode=disable"
+
+[robirt]
+cdtime=27

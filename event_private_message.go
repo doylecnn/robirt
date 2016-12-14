@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	"math/rand"
 	"strconv"
@@ -29,7 +28,7 @@ func event_private_message(p Params) {
 		}
 		kv := tech_cmd_by_private_message_to_all_groups.FindAllStringSubmatch(message, 1)[0]
 		if length := message_length(kv[2]); length > 600 {
-			log.Println("too long!", length)
+			logger.Println("too long!", length)
 			sendGroupMessage(qqnum, "太长记不住！")
 		} else {
 			key := strings.TrimSpace(kv[1])
@@ -79,7 +78,7 @@ func event_private_message(p Params) {
 		
 		kv := tmp[2:]
 		if length := message_length(kv[1]); length > 600 {
-			log.Println("too long!", length)
+			logger.Println("too long!", length)
 			sendGroupMessage(qqnum, "太长记不住！")
 		} else {
 			key := strings.TrimSpace(kv[0])

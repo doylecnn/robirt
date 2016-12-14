@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/lib/pq"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -37,10 +36,10 @@ func (p Params) GetTime(key string) (t time.Time, err error) {
 func reportError(err error) {
 	if err != nil {
 		err_msg := err.Error()
-		log.Println(err_msg)
+		logger.Println(err_msg)
 		sendPrivateMessage(config.SuperUser.QQNumber, err_msg)
 		if err, ok := err.(*pq.Error); ok {
-			log.Println("pq error:", err.Code.Name())
+			logger.Println("pq error:", err.Code.Name())
 			sendPrivateMessage(config.SuperUser.QQNumber, fmt.Sprintf("Severity:%s\nMessage:%s\nDetail:%s\nHint:%s\nPosition:%s\nInternalPosition:%s\nInternalQuery:%s\nWhere:%s\nSchema:%s\nTable:%s\nDataTypeName:%s\nConstraint:%s\nFile:%s\nLine:%s\nRoutine:%s", err.Severity,
 				err.Message,
 				err.Detail,
@@ -71,13 +70,17 @@ func json_trans(json string) string {
 }
 
 func GetGroups(loginQQ int64, cookies string, csrf_token int64) (groups *Groups) {
+	if groups == nil {
+			groups = &Groups{sync.RWMutex{}, make(map[int64]Group)}
+		}
+		
 	url_addr := "http://qun.qzone.qq.com/cgi-bin/get_group_list?groupcount=4&count=4&callbackFun=_GetGroupPortal&uin=" + strconv.FormatInt(loginQQ, 10) + "&g_tk=" + strconv.FormatInt(csrf_token, 10) + "&ua=Mozilla%2F5.0%20"
-	//log.Println(url_addr)
-	//log.Println(cookies)
+	//logger.Println(url_addr)
+	//logger.Println(cookies)
 
 	// proxy, err := url.Parse("http://10.30.3.16:7777")
 	// if err != nil {
-	// 	log.Println(err)
+	// 	logger.Println(err)
 	// 	return
 	// }
 
@@ -90,18 +93,18 @@ func GetGroups(loginQQ int64, cookies string, csrf_token int64) (groups *Groups)
 
 	r, err := http.NewRequest("GET", url_addr, nil)
 	if err != nil {
-		log.Println(err)
+		logger.Println(err)
 		return
 	}
 	r.Header.Set("Cookie", cookies)
 	resp, err := http_client.Do(r)
 	if err != nil {
-		log.Println(err)
+		logger.Println(err)
 		return
 	}
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err)
+		logger.Println(err)
 		return
 	}
 	resp.Body.Close()
@@ -154,9 +157,7 @@ func GetGroups(loginQQ int64, cookies string, csrf_token int64) (groups *Groups)
 			panic(err)
 		}
 		defer rows.Close()
-		if groups == nil {
-			groups = &Groups{sync.RWMutex{}, make(map[int64]Group)}
-		}
+		
 		i := 0
 		groups.RWLocker.Lock()
 		for rows.Next() {
@@ -170,7 +171,7 @@ func GetGroups(loginQQ int64, cookies string, csrf_token int64) (groups *Groups)
 			group.GroupName = groupname
 			group.Members = GetGroupMembers(group, LoginQQ, Cookies, Csrf_token)
 			groups.Map[groupno] = group
-			log.Printf("%d: %s[%d]", i, group.GroupName, groupno)
+			logger.Printf("%d: %s[%d]", i, group.GroupName, groupno)
 			i++
 		}
 		groups.RWLocker.Unlock()
@@ -182,12 +183,12 @@ func GetGroupMembers(group Group, loginQQ int64, cookies string, csrf_token int6
 	nicknames_in_group = &Members{sync.RWMutex{}, make(map[int64]Member)}
 
 	url_addr := fmt.Sprintf("http://qun.qzone.qq.com/cgi-bin/get_group_member?callbackFun=_GroupMember&uin=%d&groupid=%d&neednum=1&r=0.5421284231954122&g_tk=%d&ua=Mozilla%2F4.0%20(compatible%3B%20MSIE%207.0%3B%20Windows%20NT%205.1%3B%20Trident%2F4.0)", loginQQ, group.GroupNo, csrf_token)
-	//log.Println(url_addr)
-	//log.Println(cookies)
+	//logger.Println(url_addr)
+	//logger.Println(cookies)
 
 	// proxy, err := url.Parse("http://10.30.3.16:7777")
 	// if err != nil {
-	// 	log.Println(err)
+	// 	logger.Println(err)
 	// 	return
 	// }
 
@@ -200,18 +201,18 @@ func GetGroupMembers(group Group, loginQQ int64, cookies string, csrf_token int6
 
 	r, err := http.NewRequest("GET", url_addr, nil)
 	if err != nil {
-		log.Println(err)
+		logger.Println(err)
 		return
 	}
 	r.Header.Set("Cookie", cookies)
 	resp, err := http_client.Do(r)
 	if err != nil {
-		log.Println(err)
+		logger.Println(err)
 		return
 	}
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err)
+		logger.Println(err)
 		return
 	}
 	resp.Body.Close()
@@ -232,14 +233,14 @@ func GetGroupMembers(group Group, loginQQ int64, cookies string, csrf_token int6
 					}
 					err = trans.QueryRow("insert into users(qq_number) values($1) returning id", m.Uin).Scan(&userid)
 					if err != nil {
-						log.Println(err)
+						logger.Println(err)
 						trans.Rollback()
 						continue
 					} else {
 						trans.Commit()
 					}
 				} else if err != nil {
-					log.Println(err)
+					logger.Println(err)
 					continue
 				}
 				user := User{userid, m.Uin, ""}
@@ -312,8 +313,8 @@ func spliteN(s string) (result []string) {
 		return result
 	}
 	var c = 0
-	for i := 0; i < len(r); i++ {
-		for j := 0; j+i <= len(r) && j < i; j++ {
+	for i := 1; i <= len(r); i++ {
+		for j := 0; j < len(r) && j < i; j++ {
 			flag := false
 			for idx, c := range r[j:] {
 				if c == '[' {
@@ -327,7 +328,7 @@ func spliteN(s string) (result []string) {
 				if flag {
 					continue
 				}
-				if idx >= i && !flag {
+				if idx > i && !flag {
 					i = idx
 					break
 				}

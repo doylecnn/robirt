@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"time"
 	"sync"
+	"log"
 )
 
 var groups *Groups = &Groups{sync.RWMutex{},make(map[int64]Group)}
@@ -24,3 +25,5 @@ var at_regex = regexp.MustCompile("@(\\d+)")
 
 var record = regexp.MustCompile("\\[CQ:record,file=\\w+\\.amr\\]")
 var hongbao = regexp.MustCompile("^\\[CQ:hb,id=\\d+,hash=\\w+,title=(.+)\\]$")
+
+var logger *log.Logger = nil

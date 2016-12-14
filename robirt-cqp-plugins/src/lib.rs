@@ -200,6 +200,20 @@ pub extern "stdcall" fn request_add_group_handler(sub_type: i32, send_time: i32,
     return cqpapi::EVENT_IGNORE;
 }
 
+// Type=4 讨论组消息处理
+#[export_name="\x01_DiscussMessageHandler"]
+pub extern "stdcall" fn discuss_message_handler(sub_type: i32, send_time: i32, from_discuss: i64, qq_num: i64, msg: *const c_char, font: i32) -> i32 {
+    let msg = unsafe{
+        json_trans(utf8!(msg).to_owned())
+    };
+    let response_flag = unsafe{
+        json_trans(utf8!(response_flag).to_owned())
+    };
+    let notification = format!(r#"{{"method":"DiscussMessage","params":{{"subtype":{},"sendtime":{},"fromdiscuss":{},"fromqq":{},"msg":"{}","font":"{}"}}}}"#, sub_type, send_time, from_discuss, qq_num, msg, font);
+    send_notification(notification);
+    return cqpapi::EVENT_IGNORE;
+}
+
 //
 // ========== 分割线 ==========
 //
@@ -267,6 +281,13 @@ fn handle_client(mut stream :TcpStream){
                     let groupnum = params.get("groupnum").unwrap().as_i64().unwrap();
                     unsafe{
                         cqpapi::CQ_sendGroupMsg(Pupurium.auth_code, groupnum, gbk!(message));
+                    };
+                }
+                "SendDiscussionMessage" => {
+                    let message = params.get("message").unwrap().as_string().unwrap();
+                    let discussion_num = params.get("discussionnum").unwrap().as_i64().unwrap();
+                    unsafe{
+                        cqpapi::CQ_sendDiscussionMsg(Pupurium.auth_code, discussion_num, gbk!(message));
                     };
                 }
                 "GetToken" => {

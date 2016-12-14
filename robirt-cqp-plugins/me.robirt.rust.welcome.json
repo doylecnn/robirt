@@ -77,11 +77,19 @@
         "name":"应用将被停用",
         "priority":30000,
         "function":"DisableHandler"
-    }
+    },
+    {
+	"id":11,
+	"type":4,
+	"name":"讨论组消息处理",
+	"function":"DiscussMessageHandler",
+	"priority":30000
+    },
   ],
   "auth": [
     20,
     101,
+    103,
     106,
     121,
     127,

@@ -14,6 +14,8 @@ import (
 
 	"os"
 
+	"io"
+
 	"strings"
 	//"time"
 
@@ -27,41 +29,53 @@ var (
 	client_conn     *net.TCPConn
 	close_sign_chan chan struct{}     = make(chan struct{})
 	request_chan    chan Notification = make(chan Notification, 1)
+	gLogFile *os.File;
 )
 
-func init() {
-
-}
 
 func main() {
+	var err error
+	var logFilename string =  "robirt.log";
+    gLogFile, err = os.OpenFile(logFilename, os.O_RDWR | os.O_CREATE, 0777)
+    if err != nil {
+        fmt.Printf("open file error=%s\r\n", err.Error())
+        os.Exit(-1)
+    }
+	writers := []io.Writer{
+        gLogFile,
+        os.Stdout,
+    }
+    fileAndStdoutWriter := io.MultiWriter(writers...)
+	logger = log.New(fileAndStdoutWriter, "", log.Ldate | log.Ltime | log.Lshortfile)
+
 	if _, err := toml.DecodeFile("config.toml", &config); err != nil {
-		log.Println(err)
+		logger.Println(err)
 		return
 	}
-	var err error
+	
 	db, err = sql.Open("postgres", config.Database.DBName)
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
 
-	go eventLoop()
+	go serverStart()
 	go func() {
 		l_addr, err := net.ResolveTCPAddr("tcp4", "127.0.0.1:7008")
 		if err != nil {
-			log.Fatalf("ResolveTCPAddr Error: %v\n", err)
+			logger.Fatalf("ResolveTCPAddr Error: %v\n", err)
 		}
 		ln, err := net.ListenTCP("tcp4", l_addr)
 		if err != nil {
-			log.Fatal("Failed to listening server: %v", err)
+			logger.Fatal("Failed to listening server: %v", err)
 		}
-		log.Println("Listening server on tcp:127.0.0.1:7008")
+		logger.Println("Listening server on tcp:127.0.0.1:7008")
 
 		var groups_loaded = false
 		for {
 			conn, err := ln.Accept()
 			if err != nil {
-				log.Printf("Accept Error: %v\n", err)
+				logger.Printf("Accept Error: %v\n", err)
 				continue
 			}
 			go handleRequest(conn)
@@ -118,7 +132,7 @@ func handleRequest(conn net.Conn) {
 		// Read the incoming connection into the buffer.
 		reqLen, err := conn.Read(buf)
 		if err != nil {
-			log.Println("Error reading:", err.Error())
+			logger.Println("Error reading:", err.Error())
 			return
 		}
 		r := bytes.NewReader(buf[:reqLen])
@@ -127,17 +141,29 @@ func handleRequest(conn net.Conn) {
 		for scanner.Scan() {
 			b := bytes.TrimSpace(scanner.Bytes())
 			if len(b) == 0 {
-				log.Println("b length=0",string(b))
+				logger.Println("b length=0",string(b))
 				continue
 			}
 			var js Notification
 			err = json.Unmarshal(b, &js)
 			if err != nil {
-				log.Println(err)
+				logger.Println(err)
 				fmt.Println(string(b))
 				continue
 			}
 			request_chan <- js
+		}
+	}
+}
+
+func serverStart() {
+	for {
+		js := <-request_chan
+
+		if js.Method == "Token" {
+			eventToken(js.Params)
+			go eventLoop()
+			break
 		}
 	}
 }
@@ -205,7 +231,7 @@ func eventLoop() {
 			}
 			GetToken()
 		default:
-			log.Printf("未处理：%s\n", js)
+			logger.Printf("未处理：%s\n", js)
 		}
 	}
 }
