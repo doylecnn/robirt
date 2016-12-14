@@ -144,6 +144,10 @@ func handleRequest(conn net.Conn) {
 				logger.Println("b length=0",string(b))
 				continue
 			}
+			temp_s := string(b)
+			if strings.Contains(temp_s, "DiscussMessage"){
+				logger.Println(string(b))
+			}
 			var js Notification
 			err = json.Unmarshal(b, &js)
 			if err != nil {

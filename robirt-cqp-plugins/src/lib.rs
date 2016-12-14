@@ -206,9 +206,6 @@ pub extern "stdcall" fn discuss_message_handler(sub_type: i32, send_time: i32, f
     let msg = unsafe{
         json_trans(utf8!(msg).to_owned())
     };
-    let response_flag = unsafe{
-        json_trans(utf8!(response_flag).to_owned())
-    };
     let notification = format!(r#"{{"method":"DiscussMessage","params":{{"subtype":{},"sendtime":{},"fromdiscuss":{},"fromqq":{},"msg":"{}","font":"{}"}}}}"#, sub_type, send_time, from_discuss, qq_num, msg, font);
     send_notification(notification);
     return cqpapi::EVENT_IGNORE;

@@ -50,6 +50,14 @@ func sendPrivateMessage(qqnum int64, message string) {
 	}
 }
 
+func sendDiscussMessage(discussnum int64, message string){
+	if len(message) > 0 {
+		message = json_trans(message)
+		json := fmt.Sprintf("{\"method\":\"SendDiscussionMessage\",\"params\":{\"discussionnum\":%d,\"message\":\"%s\"}}", discussnum, message)
+		sendNotification(json)
+	}
+}
+
 func sendNotification(notification string) {
 	fmt.Println(notification)
 	var b = []byte(notification)

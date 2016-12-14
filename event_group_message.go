@@ -18,9 +18,9 @@ func del_replies(key, reply string, group_id, groupnum int64) {
 	if err != nil {
 		reportError(err)
 		trans.Rollback()
-		return
+	}else{
+		trans.Commit()
 	}
-	trans.Commit()
 
 	if affect_rows, err := sql_result.RowsAffected(); affect_rows > 0 {
 		sendGroupMessage(groupnum, fmt.Sprintf("已删除：key=%s, value=%s", key, reply))
@@ -64,7 +64,7 @@ func tech_replies(key, reply string, userid, groupid, groupnum int64) {
 		logger.Println("too long!", length)
 		sendGroupMessage(groupnum, "太长记不住！")
 	} else {
-		if len(key) < 2 {
+		if len([]rune(key)) < 2 && len(make_tokens(reply)) < 2 {
 			sendGroupMessage(groupnum, "触发字太短了！")
 		} else {
 			row := db.QueryRow("select count(1) from replies where key = $1 and reply = $2 and group_id = $3", key, reply, groupid)
@@ -90,8 +90,9 @@ func tech_replies(key, reply string, userid, groupid, groupnum int64) {
 					return
 				}
 				trans.Commit()
+			}else{
+				sendGroupMessage(groupnum, fmt.Sprintf("我早就会这句了！"))
 			}
-			logger.Println(key)
 		}
 	}
 }

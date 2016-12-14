@@ -84,12 +84,14 @@
 	"name":"讨论组消息处理",
 	"function":"DiscussMessageHandler",
 	"priority":30000
-    },
+    }
   ],
   "auth": [
     20,
     101,
+    102,
     103,
+    104,
     106,
     121,
     127,

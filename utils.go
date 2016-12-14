@@ -316,7 +316,7 @@ func spliteN(s string) (result []string) {
 	for i := 1; i <= len(r); i++ {
 		for j := 0; j < len(r) && j < i; j++ {
 			key := TokensToString(r[j:i])
-			if i-j >= 1 && i-j < 10 {
+			if (i-j > 1 || len([]rune(key)) > 1) && i-j < 10 {
 				contain := false
 				for _, item := range result {
 					if item == key {
@@ -359,6 +359,15 @@ func get_group_id(groupnum int64) (groupid int64, err error) {
 	groups.RWLocker.Lock()
 	groups.Map[groupnum] = g
 	groups.RWLocker.Unlock()
+	return
+}
+
+func get_discuss_id(discussnum int64) (discussid int64, err error) {
+	row := db.QueryRow("select id from discusses where discuss_number = $1", discussnum)
+	err = row.Scan(&discussid)
+	if(err!=nil){
+		err = db.QueryRow("insert into discusses (discuss_number) values ($1) returning id", discussnum).Scan(&discussid)
+	}
 	return
 }
 

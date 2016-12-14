@@ -11,6 +11,7 @@ var groups *Groups = &Groups{sync.RWMutex{},make(map[int64]Group)}
 var users *Users = &Users{sync.RWMutex{},make(map[int64]User)}
 var timeouts map[string]time.Time = make(map[string]time.Time)
 var robirt_last_active map[int64]time.Time = make(map[int64]time.Time)
+var robirt_last_active_for_discuss map[int64]time.Time = make(map[int64]time.Time)
 
 var tech_cmd_by_private_message_to_all_groups = regexp.MustCompile("^!addall ((?s:(?:[^=]*\\[CQ:\\w+,\\w+=[\\w\\.]+\\][^=]*)|(?:[^=]+)))=((?s:.+))$")
 var tech_cmd_by_private_message_to_one_groups = regexp.MustCompile("^!add (\\d+) ((?s:(?:[^=]*\\[CQ:\\w+,\\w+=[\\w\\.]+\\][^=]*)|(?:[^=]+)))=((?s:.+))$")
