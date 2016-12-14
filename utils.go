@@ -314,20 +314,18 @@ func spliteN(s string) (result []string) {
 	}
 	var c = 0
 	for i := 1; i <= len(r); i++ {
-		fmt.Println("s:i", i)
 		for j := 0; j < len(r) && j < i; j++ {
-			key := r[j:i]
-			fmt.Println(j, i, ":", TokensToString(key))
-			if len(key) >= 2 && len(key) < 10 {
+			key := TokensToString(r[j:i])
+			if i-j >= 1 && i-j < 10 {
 				contain := false
 				for _, item := range result {
-					if item == TokensToString(key) {
+					if item == key {
 						contain = true
 						break
 					}
 				}
 				if !contain {
-					result = append(result, TokensToString(key))
+					result = append(result, key)
 					c++
 					if c > max {
 						return
@@ -335,7 +333,6 @@ func spliteN(s string) (result []string) {
 				}
 			}
 		}
-		fmt.Println("e:i", i)
 	}
 	return result
 }
