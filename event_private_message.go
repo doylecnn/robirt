@@ -27,7 +27,7 @@ func event_private_message(p Params) {
 			return
 		}
 		kv := tech_cmd_by_private_message_to_all_groups.FindAllStringSubmatch(message, 1)[0]
-		if length := message_length(kv[2]); length > 600 {
+		if length := len(make_tokens(kv[2])); length > 600 {
 			logger.Println("too long!", length)
 			sendGroupMessage(qqnum, "太长记不住！")
 		} else {
@@ -77,7 +77,7 @@ func event_private_message(p Params) {
 		}
 		
 		kv := tmp[2:]
-		if length := message_length(kv[1]); length > 600 {
+		if length := len(make_tokens(kv[1])); length > 600 {
 			logger.Println("too long!", length)
 			sendGroupMessage(qqnum, "太长记不住！")
 		} else {

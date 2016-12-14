@@ -306,44 +306,28 @@ func GetGroupMembers(group Group, loginQQ int64, cookies string, csrf_token int6
 }
 
 func spliteN(s string) (result []string) {
-	max := 100
+	max := 1000
 	s = strings.TrimSpace(s)
-	r := []rune(s)
+	r := make_tokens(s)
 	if len(r) < 2 || len(r) > 30 {
 		return result
 	}
 	var c = 0
 	for i := 1; i <= len(r); i++ {
+		fmt.Println("s:i", i)
 		for j := 0; j < len(r) && j < i; j++ {
-			flag := false
-			for idx, c := range r[j:] {
-				if c == '[' {
-					flag = true
-					continue
-				}
-				if c == ']' {
-					flag = false
-					continue
-				}
-				if flag {
-					continue
-				}
-				if idx > i && !flag {
-					i = idx
-					break
-				}
-			}
-			key := []rune(strings.TrimSpace(string(r[j:i])))
-			if len(key) >= 2 && len(key) < 5 {
+			key := r[j:i]
+			fmt.Println(j, i, ":", TokensToString(key))
+			if len(key) >= 2 && len(key) < 10 {
 				contain := false
 				for _, item := range result {
-					if item == string(key) {
+					if item == TokensToString(key) {
 						contain = true
 						break
 					}
 				}
 				if !contain {
-					result = append(result, string(key))
+					result = append(result, TokensToString(key))
 					c++
 					if c > max {
 						return
@@ -351,23 +335,9 @@ func spliteN(s string) (result []string) {
 				}
 			}
 		}
+		fmt.Println("e:i", i)
 	}
 	return result
-}
-
-func message_length(message string) (lenght int) {
-	flag := false
-	for _, c := range message {
-		if c == '[' || (flag && c != ']') {
-			flag = true
-			continue
-		}
-		if c == ']' {
-			flag = false
-		}
-		lenght++
-	}
-	return
 }
 
 func get_group_id(groupnum int64) (groupid int64, err error) {

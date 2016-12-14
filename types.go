@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"sync"
+	"strings"
 )
 
 type tomlConfig struct {
@@ -107,4 +108,50 @@ type Group struct {
 type Groups struct{
 	RWLocker sync.RWMutex
 	Map map[int64]Group
+}
+
+type token struct {
+	V []rune
+}
+
+func (t *token) String() string {
+	return string(t.V)
+}
+
+func TokensToString(t []token) string {
+	r := []string{}
+	for _, v := range t {
+		r = append(r, string(v.V))
+	}
+	return strings.Join(r,"")
+}
+
+func make_tokens(s string) (result []token) {
+	result = []token{}
+	s = strings.TrimSpace(s)
+	r := []rune(s)
+	flag := false
+	var startIdx = 0
+	var endIdx = 0
+	for idx, c := range r {
+		if c == '[' {
+			flag = true
+			startIdx = idx
+			continue
+		}
+		if flag && c != ']' {
+			continue
+		}
+		if c == ']' {
+			flag = false
+			endIdx = idx + 1
+			result = append(result, token{r[startIdx:endIdx]})
+			continue
+		}
+		if c == ' ' || c == '\t' || c == '\r' || c == '\n' {
+			continue
+		}
+		result = append(result, token{r[idx : idx+1]})
+	}
+	return
 }

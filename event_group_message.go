@@ -60,7 +60,7 @@ func list_replies(key string, group_id, groupnum int64) {
 }
 
 func tech_replies(key, reply string, userid, groupid, groupnum int64) {
-	if length := message_length(reply); length > 600 {
+	if length := len(make_tokens(reply)); length > 600 {
 		logger.Println("too long!", length)
 		sendGroupMessage(groupnum, "太长记不住！")
 	} else {
@@ -171,7 +171,7 @@ func event_group_message(p Params) {
 				if err := rows.Scan(&resp); err != nil {
 					logger.Fatal(err)
 				}
-				if message_length(resp) < 600 {
+				if len(make_tokens(resp)) < 600 {
 					list = append(list, resp)
 				}
 			}
