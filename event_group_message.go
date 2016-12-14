@@ -150,12 +150,7 @@ func event_group_message(p Params) {
 		d, _ := time.ParseDuration("300s")
 		robirt_last_active[groupnum] = time.Now().Add(d)
 	} else {
-		if groupnum == 171712942 && strings.Contains(message, "[CQ:image,file=0C7D59F95205A8F6B9503FB55212C48D.") {
-			go func() {
-				time.Sleep(3 * time.Second)
-				GroupBan(groupnum, qqnum, 30)
-			}()
-		} else if last_active, ok := robirt_last_active[groupnum]; ok && time.Since(last_active).Seconds() < 28 {
+		if last_active, ok := robirt_last_active[groupnum]; ok && time.Since(last_active).Seconds() < config.Robirt.Cdtime {
 			return
 		}
 		keys := spliteN(message)

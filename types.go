@@ -8,6 +8,7 @@ import (
 type tomlConfig struct {
 	SuperUser superUserConfig
 	Database  databaseConfig
+	Robirt	  robirtConfig
 }
 
 type superUserConfig struct {
@@ -16,6 +17,10 @@ type superUserConfig struct {
 
 type databaseConfig struct {
 	DBName string
+}
+
+type robirtConfig struct{
+	Cdtime float64
 }
 
 type Notification struct {
