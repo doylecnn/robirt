@@ -29,12 +29,12 @@ use libc::c_char;
 
 use cqpsdk::cqpapi;
 
-struct Pupurium {
+struct PUPURIUM {
     is_initialized: bool,
     auth_code: i32
 }
 
-static mut Pupurium: Pupurium = Pupurium {
+static mut PUPURIUM: PUPURIUM = PUPURIUM {
     is_initialized: false,
     auth_code: 0
 };
@@ -51,8 +51,8 @@ pub extern "stdcall" fn app_info() -> *const c_char {
 #[export_name="\x01_Initialize"]
 pub extern "stdcall" fn initialize(auth_code: i32) -> i32 {
     unsafe {
-        Pupurium.auth_code = auth_code;
-        Pupurium.is_initialized = true;
+        PUPURIUM.auth_code = auth_code;
+        PUPURIUM.is_initialized = true;
     }
     return 0;
 }
@@ -83,13 +83,13 @@ pub extern "stdcall" fn cqp_enable_handler()->i32{
         match TcpListener::bind("127.0.0.1:7000"){
             Ok(listener) =>{
                 unsafe{
-                    cqpapi::CQ_addLog(Pupurium.auth_code,cqpapi::CQLOG_DEBUG,CString::new("rust json rpc").unwrap().as_ptr(),CString::new("listening started, ready to accept").unwrap().as_ptr())
+                    cqpapi::CQ_addLog(PUPURIUM.auth_code,cqpapi::CQLOG_DEBUG,CString::new("rust json rpc").unwrap().as_ptr(),CString::new("listening started, ready to accept").unwrap().as_ptr())
                 };
                 for stream in listener.incoming() {
                     match stream {
                         Ok(stream) => {
                             // unsafe{
-                            //     cqpapi::CQ_addLog(Pupurium.auth_code,cqpapi::CQLOG_INFO,CString::new("rust json rpc").unwrap().as_ptr(),gbk!("收到接入"))
+                            //     cqpapi::CQ_addLog(PUPURIUM.auth_code,cqpapi::CQLOG_INFO,CString::new("rust json rpc").unwrap().as_ptr(),gbk!("收到接入"))
                             // };
                             thread::spawn(move|| {
                                 handle_client(stream);
@@ -98,7 +98,7 @@ pub extern "stdcall" fn cqp_enable_handler()->i32{
                         Err(e) => {
                             let error_msg = format!("{:?}", e);
                             unsafe{
-                                cqpapi::CQ_addLog(Pupurium.auth_code,cqpapi::CQLOG_ERROR,CString::new("rust json rpc").unwrap().as_ptr(),gbk!(error_msg.as_str()))
+                                cqpapi::CQ_addLog(PUPURIUM.auth_code,cqpapi::CQLOG_ERROR,CString::new("rust json rpc").unwrap().as_ptr(),gbk!(error_msg.as_str()))
                             };
                         }
                     }
@@ -108,7 +108,7 @@ pub extern "stdcall" fn cqp_enable_handler()->i32{
             Err(e) => {
                 let error_msg = format!("{:?}", e);
                 unsafe{
-                    cqpapi::CQ_addLog(Pupurium.auth_code,cqpapi::CQLOG_ERROR,CString::new("rust json rpc").unwrap().as_ptr(),gbk!(error_msg.as_str()))
+                    cqpapi::CQ_addLog(PUPURIUM.auth_code,cqpapi::CQLOG_ERROR,CString::new("rust json rpc").unwrap().as_ptr(),gbk!(error_msg.as_str()))
                 };
             }
         }
@@ -230,13 +230,13 @@ fn send_notification(notification: String){
             match client.write_all(notification.as_bytes()){
                 Ok(_)=>{
                     // unsafe{
-                    //     cqpapi::CQ_addLog(Pupurium.auth_code,cqpapi::CQLOG_INFO,CString::new("rust json rpc").unwrap().as_ptr(),gbk!(notification.as_str()))
+                    //     cqpapi::CQ_addLog(PUPURIUM.auth_code,cqpapi::CQLOG_INFO,CString::new("rust json rpc").unwrap().as_ptr(),gbk!(notification.as_str()))
                     // };
                 }
                 Err(e)=>{
                     let error_msg = format!("{:?}", e);
                     unsafe{
-                        cqpapi::CQ_addLog(Pupurium.auth_code,cqpapi::CQLOG_ERROR,CString::new("rust json rpc").unwrap().as_ptr(),gbk!(error_msg.as_str()))
+                        cqpapi::CQ_addLog(PUPURIUM.auth_code,cqpapi::CQLOG_ERROR,CString::new("rust json rpc").unwrap().as_ptr(),gbk!(error_msg.as_str()))
                     };
                 }
             }
@@ -244,7 +244,7 @@ fn send_notification(notification: String){
         Err(e)=>{
             let error_msg = format!("{:?}", e);
             unsafe{
-                cqpapi::CQ_addLog(Pupurium.auth_code,cqpapi::CQLOG_ERROR,CString::new("rust json rpc").unwrap().as_ptr(),gbk!(error_msg.as_str()))
+                cqpapi::CQ_addLog(PUPURIUM.auth_code,cqpapi::CQLOG_ERROR,CString::new("rust json rpc").unwrap().as_ptr(),gbk!(error_msg.as_str()))
             };
         }
     }
@@ -252,50 +252,53 @@ fn send_notification(notification: String){
 
 fn handle_client(mut stream :TcpStream){
     // unsafe{
-    //     cqpapi::CQ_addLog(Pupurium.auth_code,cqpapi::CQLOG_INFO,CString::new("rust json rpc").unwrap().as_ptr(),gbk!("进入handle_client..."));
+    //     cqpapi::CQ_addLog(PUPURIUM.auth_code,cqpapi::CQLOG_INFO,CString::new("rust json rpc").unwrap().as_ptr(),gbk!("进入handle_client..."));
     // };
     let mut request = String::new();
     let result = stream.read_to_string(&mut request);
     match result {
         Ok(_) => {
             unsafe{
-                cqpapi::CQ_addLog(Pupurium.auth_code,cqpapi::CQLOG_DEBUG,CString::new("rust json rpc").unwrap().as_ptr(),gbk!(request.as_str()));
+                cqpapi::CQ_addLog(PUPURIUM.auth_code,cqpapi::CQLOG_DEBUG,CString::new("rust json rpc").unwrap().as_ptr(),gbk!(request.as_str()));
             };
             let json_value: Value = serde_json::from_str(request.as_str()).unwrap();
             let notification = json_value.as_object().unwrap();
-            let method = &(notification.get("method").unwrap().to_string())[..];
+            let method = notification.get("method").unwrap().as_str().unwrap();
+            // unsafe{
+            //     cqpapi::CQ_addLog(PUPURIUM.auth_code,cqpapi::CQLOG_DEBUG,CString::new("rust json rpc").unwrap().as_ptr(),gbk!(method))
+            // };
             let params = notification.get("params").unwrap().as_object().unwrap();
             match method{
                 "SendPrivateMessage" => {
-                    let message = &(params.get("message").unwrap().to_string())[..];
+                    let message = params.get("message").unwrap().as_str().unwrap();
                     let qqnum = params.get("qqnum").unwrap().as_i64().unwrap();
                     unsafe{
-                        cqpapi::CQ_sendPrivateMsg(Pupurium.auth_code, qqnum, gbk!(message));
+                        cqpapi::CQ_sendPrivateMsg(PUPURIUM.auth_code, qqnum, gbk!(message));
                     };
                 }
                 "SendGroupMessage" => {
-                    let message = &(params.get("message").unwrap().to_string())[..];
+                    let message = params.get("message").unwrap().as_str().unwrap();
                     let groupnum = params.get("groupnum").unwrap().as_i64().unwrap();
                     unsafe{
-                        cqpapi::CQ_sendGroupMsg(Pupurium.auth_code, groupnum, gbk!(message));
+                        cqpapi::CQ_sendGroupMsg(PUPURIUM.auth_code, groupnum, gbk!(message));
                     };
                 }
                 "SendDiscussionMessage" => {
-                   let message = &(params.get("message").unwrap().to_string())[..];
+                   let message = params.get("message").unwrap().as_str().unwrap();
                    let discussion_num = params.get("discussionnum").unwrap().as_i64().unwrap();
                    unsafe{
-                       cqpapi::CQ_sendDiscussMsg(Pupurium.auth_code, discussion_num, gbk!(message));
+                       cqpapi::CQ_sendDiscussMsg(PUPURIUM.auth_code, discussion_num, gbk!(message));
                    };
                 }
                 "GetToken" => {
                     let csrf_token = unsafe{
-                        cqpapi::CQ_getCsrfToken(Pupurium.auth_code)
+                        cqpapi::CQ_getCsrfToken(PUPURIUM.auth_code)
                     };
                     let login_qq = unsafe{
-                        cqpapi::CQ_getLoginQQ(Pupurium.auth_code)
+                        cqpapi::CQ_getLoginQQ(PUPURIUM.auth_code)
                     };
                     let cookies = unsafe{
-                        let bytes = CStr::from_ptr(cqpapi::CQ_getCookies(Pupurium.auth_code)).to_bytes();
+                        let bytes = CStr::from_ptr(cqpapi::CQ_getCookies(PUPURIUM.auth_code)).to_bytes();
                         str::from_utf8(bytes).unwrap()
                     };
                     let cookies = json_trans(cookies.to_owned());
@@ -303,27 +306,27 @@ fn handle_client(mut stream :TcpStream){
                     send_notification(notification);
                 }
                 "FriendAdd" => {
-                    let response_flag = &(params.get("responseFlag").unwrap().to_string())[..];
+                    let response_flag = params.get("responseFlag").unwrap().as_str().unwrap();
                     let accept = params.get("accept").unwrap().as_i64().unwrap() as i32;
-                    let memo = &(params.get("memo").unwrap().to_string())[..];
+                    let memo = params.get("memo").unwrap().as_str().unwrap();
                     unsafe{
-                        cqpapi::CQ_setFriendAddRequest(Pupurium.auth_code, gbk!(response_flag), accept, gbk!(memo));
+                        cqpapi::CQ_setFriendAddRequest(PUPURIUM.auth_code, gbk!(response_flag), accept, gbk!(memo));
                     };
                 }
                 "GroupAdd" => {
-                    let response_flag = &(params.get("responseFlag").unwrap().to_string())[..];
+                    let response_flag = params.get("responseFlag").unwrap().as_str().unwrap();
                     let accept = params.get("accept").unwrap().as_i64().unwrap() as i32;
                     let sub_type = params.get("subType").unwrap().as_i64().unwrap() as i32;
-                    let reason = &(params.get("reason").unwrap().to_string())[..];
+                    let reason = params.get("reason").unwrap().as_str().unwrap();
                     unsafe{
-                        cqpapi::CQ_setGroupAddRequestV2(Pupurium.auth_code, gbk!(response_flag), sub_type, accept, gbk!(reason));
+                        cqpapi::CQ_setGroupAddRequestV2(PUPURIUM.auth_code, gbk!(response_flag), sub_type, accept, gbk!(reason));
                     };
                 }
                 "GroupLeave" => {
                     let groupnum = params.get("groupnum").unwrap().as_i64().unwrap();
                     let qqnum = params.get("qqnum").unwrap().as_i64().unwrap();
                     unsafe{
-                        cqpapi::CQ_setGroupLeave(Pupurium.auth_code, groupnum, qqnum, 0);
+                        cqpapi::CQ_setGroupLeave(PUPURIUM.auth_code, groupnum, qqnum, 0);
                     };
                 }
                 "GroupBan" => {
@@ -331,21 +334,21 @@ fn handle_client(mut stream :TcpStream){
                     let qqnum = params.get("qqnum").unwrap().as_i64().unwrap();
                     let seconds = params.get("seconds").unwrap().as_i64().unwrap();
                     unsafe{
-                        cqpapi::CQ_setGroupBan(Pupurium.auth_code, groupnum, qqnum, seconds);
+                        cqpapi::CQ_setGroupBan(PUPURIUM.auth_code, groupnum, qqnum, seconds);
                     };
                 }
                 // "GetGroupMemberInfo"=>{//Auth=130 //getGroupMemberInfoV2
                 //     let groupnum = params.get("groupnum").unwrap().as_i64().unwrap();
                 //     let qqnum = params.get("qqnum").unwrap().as_i64().unwrap();
                 //     unsafe{
-                //         cqpapi::CQ_getGroupMemberInfoV2(Pupurium.auth_code, groupnum, qqnum, 0);
+                //         cqpapi::CQ_getGroupMemberInfoV2(PUPURIUM.auth_code, groupnum, qqnum, 0);
                 //     };
                 //     let notification = format!(r#"{{"method":"GroupMemberInfo","params":{{"token":{},"cookies":"{}","loginqq":{}}}}}"#, csrf_token, cookies, login_qq);
                 //     send_notification(notification);
                 // }
                 _ =>{
                     unsafe{
-                        cqpapi::CQ_addLog(Pupurium.auth_code,cqpapi::CQLOG_ERROR,CString::new("rust json rpc").unwrap().as_ptr(),gbk!(request.as_str()));
+                        cqpapi::CQ_addLog(PUPURIUM.auth_code,cqpapi::CQLOG_ERROR,CString::new("rust json rpc default").unwrap().as_ptr(),gbk!(request.as_str()));
                     };
                 }
             }
@@ -353,7 +356,7 @@ fn handle_client(mut stream :TcpStream){
         Err(e)=>{
             let error_msg = format!("{:?}", e);
             unsafe{
-                cqpapi::CQ_addLog(Pupurium.auth_code,cqpapi::CQLOG_ERROR,CString::new("rust json rpc").unwrap().as_ptr(),gbk!(error_msg.as_str()))
+                cqpapi::CQ_addLog(PUPURIUM.auth_code,cqpapi::CQLOG_ERROR,CString::new("rust json rpc error").unwrap().as_ptr(),gbk!(error_msg.as_str()))
             };
         }
     }
