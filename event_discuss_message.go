@@ -104,7 +104,7 @@ func event_discuss_message(p Params) {
 	user_id, _ := get_user_id(qqnum)
 	discuss_id, _ := get_discuss_id(discussnum)
 
-	fmt.Printf("discuss: %d-%d:\n%s\n", discussnum, qqnum, message)
+	logger.Printf("\n>>> discuss: %d-%d:\n>>> %s\n", discussnum, qqnum, message)
 
 	if "!help" == message || "！help" == message || "/help" == message {
 		sendDiscussMessage(discussnum, "!add 触发字=触发内容  添加一条\n!del 触发字=触发内容  删除一条\n!list 触发字  列出该触发字下的所有条目\n没有其他的了……")

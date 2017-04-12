@@ -125,7 +125,7 @@ func event_group_message(p Params) {
 		}
 	}
 	groups.RWLocker.RUnlock()
-	fmt.Printf("%s(%d)-%s(%d):\n%s\n", group.GroupName, groupnum, nickname, qqnum, message)
+	logger.Printf("\n>>> %s(%d)-%s(%d):\n>>> %s\n", group.GroupName, groupnum, nickname, qqnum, message)
 
 	if "!help" == message || "！help" == message || "/help" == message {
 		sendGroupMessage(groupnum, "!add 触发字=触发内容  添加一条\n!del 触发字=触发内容  删除一条\n!list 触发字  列出该触发字下的所有条目\n没有其他的了……")

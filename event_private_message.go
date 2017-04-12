@@ -17,7 +17,7 @@ func event_private_message(p Params) {
 	message, _ := p.GetString("message")
 	qqnum, _ := p.GetInt64("qqnum")
 	user_id, _ := get_user_id(qqnum)
-	fmt.Printf("[私聊]%d:\n%s\n", qqnum, message)
+	logger.Printf("\n>>> [私聊]%d:\n>>> %s\n", qqnum, message)
 	if message == "help" {
 		sendPrivateMessage(qqnum, "私聊调教：\n !add 群号码 触发词=内容\n !del 群号码 触发词=内容")
 		return

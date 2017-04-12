@@ -59,7 +59,7 @@ func sendDiscussMessage(discussnum int64, message string){
 }
 
 func sendNotification(notification string) {
-	fmt.Println(notification)
+	logger.Printf("\n<<< %s\n",notification)
 	var b = []byte(notification)
 
 	if client_conn == nil {
@@ -76,10 +76,10 @@ func sendNotification(notification string) {
 	}
 	count, err := client_conn.Write(b)
 	if err != nil {
-		fmt.Println(err)
+		logger.Println(err)
 	}
 	if count != len(b) {
-		fmt.Println("not all send...")
+		logger.Println("not all send...")
 	}
 
 	client_conn.Close()
