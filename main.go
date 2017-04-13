@@ -12,7 +12,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	//"time"
 
 	"github.com/BurntSushi/toml"
 	_ "github.com/lib/pq"
