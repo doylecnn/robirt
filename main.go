@@ -6,16 +6,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"strconv"
-
 	"net"
-
 	"os"
-
 	"io"
-
 	"strings"
 	//"time"
 
@@ -28,7 +23,7 @@ var (
 	config          tomlConfig
 	client_conn     *net.TCPConn
 	close_sign_chan chan struct{}     = make(chan struct{})
-	request_chan    chan Notification = make(chan Notification, 1)
+	request_chan    chan Notification = make(chan Notification, 10)
 	gLogFile *os.File;
 )
 
@@ -126,32 +121,43 @@ func cmd(cmd string) {
 
 func handleRequest(conn net.Conn) {
 	defer conn.Close()
+	tmpbyte := make([]byte, 4096)
+	tmpbyte = tmpbyte[:0]
+	buf := make([]byte, 4096*16)
 	for {
-		// Make a buffer to hold incoming data.
-		buf := make([]byte, 4096)
 		// Read the incoming connection into the buffer.
 		reqLen, err := conn.Read(buf)
 		if err != nil {
 			logger.Println("Error reading:", err.Error())
 			return
 		}
-		r := bytes.NewReader(buf[:reqLen])
-		b, _ := ioutil.ReadAll(r)
-		scanner := bufio.NewScanner(bytes.NewReader(b))
+		if(reqLen==0){
+			continue;
+		}
+		scanner := bufio.NewScanner(bytes.NewReader(buf[:reqLen]))
 		for scanner.Scan() {
 			b := bytes.TrimSpace(scanner.Bytes())
 			if len(b) == 0 {
-				logger.Println("b length=0",string(b))
+				logger.Println("len(b)==0",string(b))
 				continue
+			}else if len(tmpbyte)>0 {
+				b = append(tmpbyte, b...)
+				logger.Printf("retry b := %s\n",string(b))
 			}
 			var js Notification
 			err = json.Unmarshal(b, &js)
 			if err != nil {
-				logger.Println(err)
-				fmt.Println(string(b))
+				if serr, ok:= err.(*json.SyntaxError); ok{
+					logger.Printf("%s, %s\n",serr.Error(),string(b))
+					tmpbyte = append(tmpbyte, b...)
+				}else{
+					logger.Printf("%s, %s\n",err.Error(),string(b))
+					tmpbyte = tmpbyte[:0]
+				}				
 				continue
 			}
 			request_chan <- js
+			tmpbyte = tmpbyte[:0]
 		}
 	}
 }
