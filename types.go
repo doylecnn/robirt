@@ -2,14 +2,14 @@ package main
 
 import (
 	"encoding/json"
-	"sync"
 	"strings"
+	"sync"
 )
 
 type tomlConfig struct {
 	SuperUser superUserConfig
 	Database  databaseConfig
-	Robirt	  robirtConfig
+	Robirt    robirtConfig
 }
 
 type superUserConfig struct {
@@ -20,25 +20,31 @@ type databaseConfig struct {
 	DBName string
 }
 
-type robirtConfig struct{
+type robirtConfig struct {
 	Cdtime float64
 }
 
+// Notification json part
 type Notification struct {
+	// Method
 	Method string `json:"method"`
+
+	// Params
 	Params Params `json:"params"`
 }
 
+// Params json part
 type Params map[string]json.RawMessage
 
-type GetGroupsJson struct {
+// GroupsJSON json info for group
+type GroupsJSON struct {
 	Code int `json:"code"`
 	Data struct {
 		Group []struct {
 			Auth      int    `json:"auth"`
 			Flag      int    `json:"flag"`
-			Groupid   int    `json:"groupid"`
-			Groupname string `json:"groupname"`
+			GroupID   int    `json:"groupid"`
+			GroupName string `json:"groupname"`
 		} `json:"group"`
 		Total int `json:"total"`
 	} `json:"data"`
@@ -47,14 +53,15 @@ type GetGroupsJson struct {
 	Subcode int    `json:"subcode"`
 }
 
-type GetGroupMembersJson struct {
+// GroupMembersJSON json info for group member
+type GroupMembersJSON struct {
 	Code int `json:"code"`
 	Data struct {
 		Alpha      int    `json:"alpha"`
-		Bbscount   int    `json:"bbscount"`
+		BbsCount   int    `json:"bbscount"`
 		Class      int    `json:"class"`
 		CreateTime int    `json:"create_time"`
-		Filecount  int    `json:"filecount"`
+		FileCount  int    `json:"filecount"`
 		FingerMemo string `json:"finger_memo"`
 		GroupMemo  string `json:"group_memo"`
 		GroupName  string `json:"group_name"`
@@ -74,40 +81,46 @@ type GetGroupMembersJson struct {
 	Subcode int    `json:"subcode"`
 }
 
+// User user info
 type User struct {
-	Id     int64
-	QQNo   int64
+	ID     int64
+	QQNum  int64
 	QQName string
 }
 
+// Member member info
 type Member struct {
-	Id       int64
-	User_Id  int64
-	Group_Id int64
+	ID       int64
+	UserID   int64
+	GroupID  int64
 	Nickname string
 	Rights   int
 }
 
-type Users struct{
+// Users users map
+type Users struct {
 	RWLocker sync.RWMutex
-	Map map[int64]User
+	Map      map[int64]User
 }
 
-type Members struct{
+// Members members map
+type Members struct {
 	RWLocker sync.RWMutex
-	Map map[int64]Member
+	Map      map[int64]Member
 }
 
+// Group group info
 type Group struct {
-	Id        int64
-	GroupNo   int64
+	ID        int64
+	GroupNum  int64
 	GroupName string
-	Members *Members
+	Members   *Members
 }
 
-type Groups struct{
+// Groups groups map
+type Groups struct {
 	RWLocker sync.RWMutex
-	Map map[int64]Group
+	Map      map[int64]Group
 }
 
 type token struct {
@@ -118,15 +131,16 @@ func (t *token) String() string {
 	return string(t.V)
 }
 
-func TokensToString(t []token) string {
+// tokensToString used to get string
+func tokensToString(t []token) string {
 	r := []string{}
 	for _, v := range t {
 		r = append(r, string(v.V))
 	}
-	return strings.Join(r,"")
+	return strings.Join(r, "")
 }
 
-func make_tokens(s string) (result []token) {
+func makeTokens(s string) (result []token) {
 	result = []token{}
 	s = strings.TrimSpace(s)
 	r := []rune(s)

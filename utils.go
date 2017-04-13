@@ -4,26 +4,27 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/lib/pq"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/lib/pq"
 )
 
-func (p Params) GetInt64(key string) (number int64, err error) {
+func (p Params) getInt64(key string) (number int64, err error) {
 	err = json.Unmarshal(p[key], &number)
 	return
 }
 
-func (p Params) GetString(key string) (str string, err error) {
+func (p Params) getString(key string) (str string, err error) {
 	err = json.Unmarshal(p[key], &str)
 	return
 }
 
-func (p Params) GetTime(key string) (t time.Time, err error) {
+func (p Params) getTime(key string) (t time.Time, err error) {
 	var timestamp int64
 	err = json.Unmarshal(p[key], &timestamp)
 	if err != nil {
@@ -35,12 +36,12 @@ func (p Params) GetTime(key string) (t time.Time, err error) {
 
 func reportError(err error) {
 	if err != nil {
-		err_msg := err.Error()
-		logger.Println(err_msg)
-		sendPrivateMessage(config.SuperUser.QQNumber, err_msg)
+		errMessage := err.Error()
+		logger.Println(errMessage)
+		sendPrivateMessage(config.SuperUser.QQNumber, errMessage)
 		if err, ok := err.(*pq.Error); ok {
 			logger.Println("pq error:", err.Code.Name())
-			sendPrivateMessage(config.SuperUser.QQNumber, fmt.Sprintf("Severity:%s\nMessage:%s\nDetail:%s\nHint:%s\nPosition:%s\nInternalPosition:%s\nInternalQuery:%s\nWhere:%s\nSchema:%s\nTable:%s\nDataTypeName:%s\nConstraint:%s\nFile:%s\nLine:%s\nRoutine:%s", err.Severity,
+			sendPrivateMessage(config.SuperUser.QQNumber, fmt.Sprintf("Severity:%s\nMessage:%s\nDetail:%s\nHint:%s\nPosition:%s\nInternalPosition:%s\nInternalQuery:%s\nWhere:%s\nSchema:%s\nTable:%s\nColumn:%s\nDataTypeName:%s\nConstraint:%s\nFile:%s\nLine:%s\nRoutine:%s", err.Severity,
 				err.Message,
 				err.Detail,
 				err.Hint,
@@ -60,7 +61,7 @@ func reportError(err error) {
 	}
 }
 
-func json_trans(json string) string {
+func jsonTrans(json string) string {
 	json = strings.Replace(json, "\\", "\\\\", -1)
 	json = strings.Replace(json, "\"", "\\\"", -1)
 	json = strings.Replace(json, "\n", "\\n", -1)
@@ -69,12 +70,12 @@ func json_trans(json string) string {
 	return json
 }
 
-func GetGroups(loginQQ int64, cookies string, csrf_token int64) (groups *Groups) {
+func getGroups(loginQQ int64, cookies string, csrfToken int64) (groups *Groups) {
 	if groups == nil {
-			groups = &Groups{sync.RWMutex{}, make(map[int64]Group)}
-		}
-		
-	url_addr := "http://qun.qzone.qq.com/cgi-bin/get_group_list?groupcount=4&count=4&callbackFun=_GetGroupPortal&uin=" + strconv.FormatInt(loginQQ, 10) + "&g_tk=" + strconv.FormatInt(csrf_token, 10) + "&ua=Mozilla%2F5.0%20"
+		groups = &Groups{sync.RWMutex{}, make(map[int64]Group)}
+	}
+
+	urlAddr := "http://qun.qzone.qq.com/cgi-bin/get_group_list?groupcount=4&count=4&callbackFun=_GetGroupPortal&uin=" + strconv.FormatInt(loginQQ, 10) + "&g_tk=" + strconv.FormatInt(csrfToken, 10) + "&ua=Mozilla%2F5.0%20"
 	//logger.Println(url_addr)
 	//logger.Println(cookies)
 
@@ -84,20 +85,20 @@ func GetGroups(loginQQ int64, cookies string, csrf_token int64) (groups *Groups)
 	// 	return
 	// }
 
-	http_client := &http.Client{
+	httpClient := &http.Client{
 		Transport: &http.Transport{
 			// Proxy:             http.ProxyURL(proxy),
 			DisableKeepAlives: true,
 		},
 	}
 
-	r, err := http.NewRequest("GET", url_addr, nil)
+	r, err := http.NewRequest("GET", urlAddr, nil)
 	if err != nil {
 		logger.Println(err)
 		return
 	}
 	r.Header.Set("Cookie", cookies)
-	resp, err := http_client.Do(r)
+	resp, err := httpClient.Do(r)
 	if err != nil {
 		logger.Println(err)
 		return
@@ -108,23 +109,23 @@ func GetGroups(loginQQ int64, cookies string, csrf_token int64) (groups *Groups)
 		return
 	}
 	resp.Body.Close()
-	groups_resp := string(b)
-	if strings.HasPrefix(groups_resp, "_GetGroupPortal_Callback(") && strings.HasSuffix(groups_resp, ");") {
-		groups_resp = groups_resp[25 : len(groups_resp)-2]
-		groupsjson := GetGroupsJson{}
-		err = json.Unmarshal([]byte(groups_resp), &groupsjson)
+	groupsResp := string(b)
+	if strings.HasPrefix(groupsResp, "_GetGroupPortal_Callback(") && strings.HasSuffix(groupsResp, ");") {
+		groupsResp = groupsResp[25 : len(groupsResp)-2]
+		groupsjson := GroupsJSON{}
+		err = json.Unmarshal([]byte(groupsResp), &groupsjson)
 		if err == nil {
 			for _, g := range groupsjson.Data.Group {
-				row := db.QueryRow("select id, name from groups where group_number = $1", g.Groupid)
-				var groupname string
-				var group_id int64
-				err = row.Scan(&group_id, &groupname)
+				row := db.QueryRow("select id, name from groups where group_number = $1", g.GroupID)
+				var groupName string
+				var groupID int64
+				err = row.Scan(&groupID, &groupName)
 				if err == sql.ErrNoRows {
 					trans, err := db.Begin()
 					if err != nil {
 						reportError(err)
 					}
-					_, err = trans.Exec("insert into groups(group_number, name) values($1, $2)", g.Groupid, g.Groupname)
+					_, err = trans.Exec("insert into groups(group_number, name) values($1, $2)", g.GroupID, g.GroupName)
 					if err != nil {
 						reportError(err)
 						trans.Rollback()
@@ -133,12 +134,12 @@ func GetGroups(loginQQ int64, cookies string, csrf_token int64) (groups *Groups)
 					}
 				} else if err != nil {
 					reportError(err)
-				} else if groupname != g.Groupname {
+				} else if groupName != g.GroupName {
 					trans, err := db.Begin()
 					if err != nil {
 						reportError(err)
 					}
-					_, err = trans.Exec("update groups set name = $1 where group_number = $2", g.Groupname, g.Groupid)
+					_, err = trans.Exec("update groups set name = $1 where group_number = $2", g.GroupName, g.GroupID)
 					if err != nil {
 						reportError(err)
 						trans.Rollback()
@@ -157,21 +158,21 @@ func GetGroups(loginQQ int64, cookies string, csrf_token int64) (groups *Groups)
 			panic(err)
 		}
 		defer rows.Close()
-		
+
 		i := 0
 		groups.RWLocker.Lock()
 		for rows.Next() {
-			var groupname string
-			var group_id int64
-			var groupno int64
-			rows.Scan(&group_id, &groupno, &groupname)
+			var groupName string
+			var groupID int64
+			var groupNum int64
+			rows.Scan(&groupID, &groupNum, &groupName)
 			group := Group{}
-			group.Id = group_id
-			group.GroupNo = groupno
-			group.GroupName = groupname
-			group.Members = GetGroupMembers(group, LoginQQ, Cookies, Csrf_token)
-			groups.Map[groupno] = group
-			logger.Printf("%d: %s[%d]", i, group.GroupName, groupno)
+			group.ID = groupID
+			group.GroupNum = groupNum
+			group.GroupName = groupName
+			group.Members = getGroupMembers(group, LoginQQ, Cookies, CsrfToken)
+			groups.Map[groupNum] = group
+			logger.Printf("%d: %s[%d]", i, group.GroupName, groupNum)
 			i++
 		}
 		groups.RWLocker.Unlock()
@@ -179,10 +180,10 @@ func GetGroups(loginQQ int64, cookies string, csrf_token int64) (groups *Groups)
 	return
 }
 
-func GetGroupMembers(group Group, loginQQ int64, cookies string, csrf_token int64) (nicknames_in_group *Members) {
-	nicknames_in_group = &Members{sync.RWMutex{}, make(map[int64]Member)}
+func getGroupMembers(group Group, loginQQ int64, cookies string, csrfToken int64) (nicknamesInGroup *Members) {
+	nicknamesInGroup = &Members{sync.RWMutex{}, make(map[int64]Member)}
 
-	url_addr := fmt.Sprintf("http://qun.qzone.qq.com/cgi-bin/get_group_member?callbackFun=_GroupMember&uin=%d&groupid=%d&neednum=1&r=0.5421284231954122&g_tk=%d&ua=Mozilla%2F4.0%20(compatible%3B%20MSIE%207.0%3B%20Windows%20NT%205.1%3B%20Trident%2F4.0)", loginQQ, group.GroupNo, csrf_token)
+	urlAddr := fmt.Sprintf("http://qun.qzone.qq.com/cgi-bin/get_group_member?callbackFun=_GroupMember&uin=%d&groupid=%d&neednum=1&r=0.5421284231954122&g_tk=%d&ua=Mozilla%%2F4.0%%20(compatible%%3B%%20MSIE%%207.0%%3B%%20Windows%%20NT%%205.1%%3B%%20Trident%%2F4.0)", loginQQ, group.GroupNum, csrfToken)
 	//logger.Println(url_addr)
 	//logger.Println(cookies)
 
@@ -192,20 +193,20 @@ func GetGroupMembers(group Group, loginQQ int64, cookies string, csrf_token int6
 	// 	return
 	// }
 
-	http_client := &http.Client{
+	httpClient := &http.Client{
 		Transport: &http.Transport{
 			// Proxy:             http.ProxyURL(proxy),
 			DisableKeepAlives: true,
 		},
 	}
 
-	r, err := http.NewRequest("GET", url_addr, nil)
+	r, err := http.NewRequest("GET", urlAddr, nil)
 	if err != nil {
 		logger.Println(err)
 		return
 	}
 	r.Header.Set("Cookie", cookies)
-	resp, err := http_client.Do(r)
+	resp, err := httpClient.Do(r)
 	if err != nil {
 		logger.Println(err)
 		return
@@ -216,22 +217,22 @@ func GetGroupMembers(group Group, loginQQ int64, cookies string, csrf_token int6
 		return
 	}
 	resp.Body.Close()
-	group_members_resp := string(b)
-	if strings.HasPrefix(group_members_resp, "_GroupMember_Callback(") && strings.HasSuffix(group_members_resp, ");") {
-		group_members_resp = group_members_resp[22 : len(group_members_resp)-2]
-		memberjson := GetGroupMembersJson{}
-		err = json.Unmarshal([]byte(group_members_resp), &memberjson)
+	groupMembersResp := string(b)
+	if strings.HasPrefix(groupMembersResp, "_GroupMember_Callback(") && strings.HasSuffix(groupMembersResp, ");") {
+		groupMembersResp = groupMembersResp[22 : len(groupMembersResp)-2]
+		memberjson := GroupMembersJSON{}
+		err = json.Unmarshal([]byte(groupMembersResp), &memberjson)
 		if err == nil {
 			for _, m := range memberjson.Data.Item {
-				var userid, memberid int64
-				userid, err = get_user_id(m.Uin)
+				var userID, memberID int64
+				userID, err = getUserID(m.Uin)
 				if err == sql.ErrNoRows {
 					trans, err := db.Begin()
 					if err != nil {
 						reportError(err)
 						continue
 					}
-					err = trans.QueryRow("insert into users(qq_number) values($1) returning id", m.Uin).Scan(&userid)
+					err = trans.QueryRow("insert into users(qq_number) values($1) returning id", m.Uin).Scan(&userID)
 					if err != nil {
 						logger.Println(err)
 						trans.Rollback()
@@ -243,19 +244,19 @@ func GetGroupMembers(group Group, loginQQ int64, cookies string, csrf_token int6
 					logger.Println(err)
 					continue
 				}
-				user := User{userid, m.Uin, ""}
+				user := User{userID, m.Uin, ""}
 
-				row := db.QueryRow("SELECT id, nickname, rights FROM group_members where group_id = $1 and user_id = $2", group.Id, user.Id)
+				row := db.QueryRow("SELECT id, nickname, rights FROM group_members where group_id = $1 and user_id = $2", group.ID, user.ID)
 				var nickname string
 				var rights int
-				err = row.Scan(&memberid, &nickname, &rights)
+				err = row.Scan(&memberID, &nickname, &rights)
 				if err == sql.ErrNoRows {
 					trans, err := db.Begin()
 					if err != nil {
 						reportError(err)
 						continue
 					}
-					err = trans.QueryRow("insert into group_members(group_id, user_id, nickname) values($1, $2, $3)  returning id", group.Id, user.Id, m.Nick).Scan(&memberid)
+					err = trans.QueryRow("insert into group_members(group_id, user_id, nickname) values($1, $2, $3)  returning id", group.ID, user.ID, m.Nick).Scan(&memberID)
 					if err != nil {
 						reportError(err)
 						trans.Rollback()
@@ -270,7 +271,7 @@ func GetGroupMembers(group Group, loginQQ int64, cookies string, csrf_token int6
 						reportError(err)
 						continue
 					}
-					_, err = trans.Exec("update group_members set nickname = $1 where group_id = $2 and user_id = $3", m.Nick, group.Id, user.Id)
+					_, err = trans.Exec("update group_members set nickname = $1 where group_id = $2 and user_id = $3", m.Nick, group.ID, user.ID)
 					if err != nil {
 						reportError(err)
 						trans.Rollback()
@@ -284,23 +285,23 @@ func GetGroupMembers(group Group, loginQQ int64, cookies string, csrf_token int6
 			return
 		}
 
-		rows, err := db.Query("SELECT n.id, n.user_id, u.qq_number,n.nickname,n.rights FROM group_members n, users u where n.user_id = u.id and n.group_id=$1", group.Id)
+		rows, err := db.Query("SELECT n.id, n.user_id, u.qq_number,n.nickname,n.rights FROM group_members n, users u where n.user_id = u.id and n.group_id=$1", group.ID)
 		if err != nil {
 			panic(err)
 		}
 		defer rows.Close()
-		nicknames_in_group.RWLocker.Lock()
+		nicknamesInGroup.RWLocker.Lock()
 		for rows.Next() {
 			var nickname string
-			var userqq, user_id, member_id int64
+			var userQQ, userID, memberID int64
 			var rights int
-			err = rows.Scan(&member_id, &user_id, &userqq, &nickname, &rights)
+			err = rows.Scan(&memberID, &userID, &userQQ, &nickname, &rights)
 			if err != nil {
 				panic(err)
 			}
-			nicknames_in_group.Map[userqq] = Member{member_id, user_id, group.Id, nickname, rights}
+			nicknamesInGroup.Map[userQQ] = Member{memberID, userID, group.ID, nickname, rights}
 		}
-		nicknames_in_group.RWLocker.Unlock()
+		nicknamesInGroup.RWLocker.Unlock()
 	}
 	return
 }
@@ -308,14 +309,14 @@ func GetGroupMembers(group Group, loginQQ int64, cookies string, csrf_token int6
 func spliteN(s string) (result []string) {
 	max := 1000
 	s = strings.TrimSpace(s)
-	r := make_tokens(s)
+	r := makeTokens(s)
 	if len(r) < 2 || len(r) > 30 {
 		return result
 	}
 	var c = 0
 	for i := 1; i <= len(r); i++ {
 		for j := 0; j < len(r) && j < i; j++ {
-			key := TokensToString(r[j:i])
+			key := tokensToString(r[j:i])
 			if (i-j > 1 || len([]rune(key)) > 1) && i-j < 10 {
 				contain := false
 				for _, item := range result {
@@ -337,59 +338,59 @@ func spliteN(s string) (result []string) {
 	return result
 }
 
-func get_group_id(groupnum int64) (groupid int64, err error) {
+func getGroupID(groupNum int64) (groupID int64, err error) {
 	groups.RWLocker.RLock()
-	if group, ok := groups.Map[groupnum]; ok {
-		groupid = group.Id
+	if group, ok := groups.Map[groupNum]; ok {
+		groupID = group.ID
 		groups.RWLocker.RUnlock()
 		return
 	}
 	groups.RWLocker.RUnlock()
-	row := db.QueryRow("select id, name from groups where group_number = $1", groupnum)
+	row := db.QueryRow("select id, name from groups where group_number = $1", groupNum)
 	var groupName string
-	err = row.Scan(&groupid, &groupName)
+	err = row.Scan(&groupID, &groupName)
 	g := Group{}
-	g.Id = groupid
-	g.GroupNo = groupnum
+	g.ID = groupID
+	g.GroupNum = groupNum
 	g.GroupName = groupName
-	g.Members = GetGroupMembers(g, LoginQQ, Cookies, Csrf_token)
+	g.Members = getGroupMembers(g, LoginQQ, Cookies, CsrfToken)
 	if groups == nil {
 		groups = &Groups{}
 	}
 	groups.RWLocker.Lock()
-	groups.Map[groupnum] = g
+	groups.Map[groupNum] = g
 	groups.RWLocker.Unlock()
 	return
 }
 
-func get_discuss_id(discussnum int64) (discussid int64, err error) {
-	row := db.QueryRow("select id from discusses where discuss_number = $1", discussnum)
-	err = row.Scan(&discussid)
-	if(err!=nil){
-		err = db.QueryRow("insert into discusses (discuss_number) values ($1) returning id", discussnum).Scan(&discussid)
+func getDiscussID(discussNum int64) (discussID int64, err error) {
+	row := db.QueryRow("select id from discusses where discuss_number = $1", discussNum)
+	err = row.Scan(&discussID)
+	if err != nil {
+		err = db.QueryRow("insert into discusses (discuss_number) values ($1) returning id", discussNum).Scan(&discussID)
 	}
 	return
 }
 
-func get_user_id(qqnum int64) (userid int64, err error) {
+func getUserID(qqNum int64) (userID int64, err error) {
 	users.RWLocker.RLock()
-	if user, ok := users.Map[qqnum]; ok {
-		userid = user.Id
+	if user, ok := users.Map[qqNum]; ok {
+		userID = user.ID
 		users.RWLocker.RUnlock()
 		return
 	}
 	users.RWLocker.RUnlock()
-	row := db.QueryRow("select id, qq_name from users where qq_number = $1", qqnum)
+	row := db.QueryRow("select id, qq_name from users where qq_number = $1", qqNum)
 	var name sql.NullString
-	err = row.Scan(&userid, &name)
+	err = row.Scan(&userID, &name)
 	if users == nil {
 		users = &Users{}
 	}
 	users.RWLocker.Lock()
 	if name.Valid {
-		users.Map[qqnum] = User{userid, qqnum, name.String}
+		users.Map[qqNum] = User{userID, qqNum, name.String}
 	} else {
-		users.Map[qqnum] = User{userid, qqnum, ""}
+		users.Map[qqNum] = User{userID, qqNum, ""}
 	}
 	users.RWLocker.Unlock()
 	return
