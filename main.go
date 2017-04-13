@@ -98,19 +98,9 @@ func cmd(cmd string) {
 			fmt.Println(err)
 			return
 		}
-		var group Group
-		var find = false
-		groups.RWLocker.RLock()
-		for _, g := range groups.Groups {
-			if g.GroupNum == groupNum {
-				group = g
-				find = true
-				break
-			}
-		}
-		groups.RWLocker.RUnlock()
-		if find {
-			sendGroupMessage(group.GroupNum, s[1])
+
+		if g, ok := groups.getGroup(groupNum); ok {
+			sendGroupMessage(g.GroupNum, s[1])
 		} else {
 			fmt.Println("group not found!")
 		}

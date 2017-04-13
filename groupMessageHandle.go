@@ -116,14 +116,11 @@ func groupMessageHandle(p Params) {
 		}
 	}
 	var group Group
-	groups.RWLocker.RLock()
-	for _, g := range groups.Groups {
-		if g.GroupNum == groupNum {
-			group = g
-			break
-		}
+	if g, ok := groups.getGroup(groupNum); ok {
+		group = g
+	} else {
+		return
 	}
-	groups.RWLocker.RUnlock()
 	logger.Printf("\n>>> %s(%d)-%s(%d):\n>>> %s\n", group.GroupName, groupNum, nickname, qqNum, message)
 
 	if "!help" == message || "！help" == message || "/help" == message {
