@@ -93,7 +93,7 @@ func cmd(cmd string) {
 	}
 	s := strings.SplitN(strings.TrimSpace(cmd), ":", 2)
 	if len(s) == 2 {
-		groupnum, err := strconv.ParseInt(strings.TrimSpace(s[0]), 10, 64)
+		groupNum, err := strconv.ParseInt(strings.TrimSpace(s[0]), 10, 64)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -101,8 +101,8 @@ func cmd(cmd string) {
 		var group Group
 		var find = false
 		groups.RWLocker.RLock()
-		for _, g := range groups.Map {
-			if g.GroupNum == groupnum {
+		for _, g := range groups.Groups {
+			if g.GroupNum == groupNum {
 				group = g
 				find = true
 				break
@@ -204,21 +204,18 @@ func eventLoop() {
 				continue
 			}
 			//beingOperateQQ := js.Params.GetInt64("opqqnum")
-			groups.RWLocker.RLock()
-			group := groups.Map[groupNum]
-			groups.RWLocker.RUnlock()
-			members := group.Members
-			members.RWLocker.RLock()
-			if subtype == 1 {
-				nickname := members.Map[qqNum].Nickname
-				message := fmt.Sprintf("群员:[%s] 退群了!!!", nickname)
-				sendGroupMessage(groupNum, message)
-			} else if subtype == 2 {
-				nickname := members.Map[qqNum].Nickname
-				message := fmt.Sprintf("群员:[%s] 被 某个管理员 踢了!!!", nickname)
-				sendGroupMessage(groupNum, message)
+			if group, ok := groups.getGroup(groupNum); ok {
+				members := group.Members
+				if member, ok := members.getMember(qqNum); ok {
+					if subtype == 1 {
+						message := fmt.Sprintf("群员:[%s] 退群了!!!", member.Nickname)
+						sendGroupMessage(groupNum, message)
+					} else if subtype == 2 {
+						message := fmt.Sprintf("群员:[%s] 被 某个管理员 踢了!!!", member.Nickname)
+						sendGroupMessage(groupNum, message)
+					}
+				}
 			}
-			members.RWLocker.RUnlock()
 			getToken()
 		case "RequestAddFriend":
 			responseFlag, _ := js.Params.getString("response_flag")

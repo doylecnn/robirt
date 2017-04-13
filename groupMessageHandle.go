@@ -108,17 +108,16 @@ func groupMessageHandle(p Params) {
 	if len(anonymousname) > 0 {
 		nickname = "[匿名]" + anonymousname
 	} else {
-		groups.RWLocker.RLock()
-		group := groups.Map[groupNum]
-		groups.RWLocker.RUnlock()
-		members := group.Members
-		members.RWLocker.RLock()
-		nickname = members.Map[qqNum].Nickname
-		members.RWLocker.RUnlock()
+		if group, ok := groups.getGroup(groupNum); ok {
+			members := group.Members
+			if member, ok := members.getMember(qqNum); ok {
+				nickname = member.Nickname
+			}
+		}
 	}
 	var group Group
 	groups.RWLocker.RLock()
-	for _, g := range groups.Map {
+	for _, g := range groups.Groups {
 		if g.GroupNum == groupNum {
 			group = g
 			break

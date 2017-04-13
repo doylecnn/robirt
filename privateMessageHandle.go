@@ -42,7 +42,7 @@ func privateMessageHandle(p Params) {
 					return
 				}
 				groups.RWLocker.RLock()
-				for _, group := range groups.Map {
+				for _, group := range groups.Groups {
 					row := trans.QueryRow("select count(1) from replies where key = $1 and reply = $2 and group_id = $3", key, value, group.ID)
 					var count int
 					row.Scan(&count)
@@ -67,12 +67,9 @@ func privateMessageHandle(p Params) {
 			sendPrivateMessage(qqNum, err.Error())
 			return
 		}
-		groups.RWLocker.RLock()
-		if g, groupExists := groups.Map[groupNum]; groupExists {
+		if g, ok := groups.getGroup(groupNum); ok {
 			groupID = g.ID
-			groups.RWLocker.RUnlock()
 		} else {
-			groups.RWLocker.RUnlock()
 			return
 		}
 
@@ -134,12 +131,9 @@ func privateMessageHandle(p Params) {
 			sendPrivateMessage(qqNum, err.Error())
 			return
 		}
-		groups.RWLocker.RLock()
-		if g, groupExists := groups.Map[groupNum]; groupExists {
+		if g, ok := groups.getGroup(groupNum); ok {
 			groupID = g.ID
-			groups.RWLocker.RUnlock()
 		} else {
-			groups.RWLocker.RUnlock()
 			return
 		}
 
@@ -176,10 +170,8 @@ func privateMessageHandle(p Params) {
 						sendPrivateMessage(qqNum, err.Error())
 						return
 					}
-					groups.RWLocker.RLock()
-					group, groupExists := groups.Map[groupNum]
-					groups.RWLocker.RUnlock()
-					if groupExists {
+
+					if group, ok := groups.getGroup(groupNum); ok {
 						msg := s[1]
 						if atRegex.MatchString(msg) {
 							msg = atRegex.ReplaceAllString(msg, " [CQ:at,qq=$1]")
@@ -197,10 +189,8 @@ func privateMessageHandle(p Params) {
 					sendPrivateMessage(qqNum, err.Error())
 					return
 				}
-				groups.RWLocker.RLock()
-				group, groupExists := groups.Map[groupNum]
-				groups.RWLocker.RUnlock()
-				if groupExists {
+
+				if group, ok := groups.getGroup(groupNum); ok {
 					sendGroupMessage(group.GroupNum, "我决定离开，再见~")
 					leaveGroup(group.GroupNum, LoginQQ)
 				} else {
@@ -212,7 +202,7 @@ func privateMessageHandle(p Params) {
 					rand.Seed(time.Now().Unix())
 
 					groups.RWLocker.RLock()
-					for _, group := range groups.Map {
+					for _, group := range groups.Groups {
 						sendGroupMessage(group.GroupNum, strings.TrimSpace(message[10:]))
 						d := time.Duration(rand.Intn(3)+3) * time.Second
 						time.Sleep(d)

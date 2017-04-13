@@ -157,7 +157,7 @@ func getGroups(loginQQ int64, cookies string, csrfToken int64) (groups *Groups) 
 		if err != nil {
 			panic(err)
 		}
-		defer rows.Close()
+		rows.Close()
 
 		i := 0
 		groups.RWLocker.Lock()
@@ -171,7 +171,7 @@ func getGroups(loginQQ int64, cookies string, csrfToken int64) (groups *Groups) 
 			group.GroupNum = groupNum
 			group.GroupName = groupName
 			group.Members = getGroupMembers(group, LoginQQ, Cookies, CsrfToken)
-			groups.Map[groupNum] = group
+			groups.Groups[groupNum] = group
 			logger.Printf("%d: %s[%d]", i, group.GroupName, groupNum)
 			i++
 		}
@@ -289,7 +289,7 @@ func getGroupMembers(group Group, loginQQ int64, cookies string, csrfToken int64
 		if err != nil {
 			panic(err)
 		}
-		defer rows.Close()
+		rows.Close()
 		nicknamesInGroup.RWLocker.Lock()
 		for rows.Next() {
 			var nickname string
@@ -299,7 +299,7 @@ func getGroupMembers(group Group, loginQQ int64, cookies string, csrfToken int64
 			if err != nil {
 				panic(err)
 			}
-			nicknamesInGroup.Map[userQQ] = Member{memberID, userID, group.ID, nickname, rights}
+			nicknamesInGroup.Members[userQQ] = Member{memberID, userID, group.ID, nickname, rights}
 		}
 		nicknamesInGroup.RWLocker.Unlock()
 	}
@@ -339,13 +339,10 @@ func spliteN(s string) (result []string) {
 }
 
 func getGroupID(groupNum int64) (groupID int64, err error) {
-	groups.RWLocker.RLock()
-	if group, ok := groups.Map[groupNum]; ok {
+	if group, ok := groups.getGroup(groupNum); ok {
 		groupID = group.ID
-		groups.RWLocker.RUnlock()
 		return
 	}
-	groups.RWLocker.RUnlock()
 	row := db.QueryRow("select id, name from groups where group_number = $1", groupNum)
 	var groupName string
 	err = row.Scan(&groupID, &groupName)
@@ -358,7 +355,7 @@ func getGroupID(groupNum int64) (groupID int64, err error) {
 		groups = &Groups{}
 	}
 	groups.RWLocker.Lock()
-	groups.Map[groupNum] = g
+	groups.Groups[groupNum] = g
 	groups.RWLocker.Unlock()
 	return
 }
@@ -373,13 +370,10 @@ func getDiscussID(discussNum int64) (discussID int64, err error) {
 }
 
 func getUserID(qqNum int64) (userID int64, err error) {
-	users.RWLocker.RLock()
-	if user, ok := users.Map[qqNum]; ok {
+	if user, ok := users.getUser(qqNum); ok {
 		userID = user.ID
-		users.RWLocker.RUnlock()
 		return
 	}
-	users.RWLocker.RUnlock()
 	row := db.QueryRow("select id, qq_name from users where qq_number = $1", qqNum)
 	var name sql.NullString
 	err = row.Scan(&userID, &name)
@@ -388,9 +382,9 @@ func getUserID(qqNum int64) (userID int64, err error) {
 	}
 	users.RWLocker.Lock()
 	if name.Valid {
-		users.Map[qqNum] = User{userID, qqNum, name.String}
+		users.Users[qqNum] = User{userID, qqNum, name.String}
 	} else {
-		users.Map[qqNum] = User{userID, qqNum, ""}
+		users.Users[qqNum] = User{userID, qqNum, ""}
 	}
 	users.RWLocker.Unlock()
 	return
