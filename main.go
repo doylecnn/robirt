@@ -183,11 +183,6 @@ func eventLoop() {
 		}
 
 		subtype, _ := js.Params.getInt64("subtype")
-		//sendTime, _ := js.Params.GetTime("sendtime")
-		// span := time.Since(sendTime).Seconds()
-		// if span > 30 || span <0 {
-		// 	continue
-		// }
 
 		switch js.Method {
 		case "GroupMessage":
