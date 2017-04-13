@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -75,7 +74,7 @@ func getGroups(loginQQ int64, cookies string, csrfToken int64) (groups *Groups) 
 		groups = &Groups{sync.RWMutex{}, make(map[int64]Group)}
 	}
 
-	urlAddr := "http://qun.qzone.qq.com/cgi-bin/get_group_list?groupcount=4&count=4&callbackFun=_GetGroupPortal&uin=" + strconv.FormatInt(loginQQ, 10) + "&g_tk=" + strconv.FormatInt(csrfToken, 10) + "&ua=Mozilla%2F5.0%20"
+	urlAddr := fmt.Sprintf("http://qun.qzone.qq.com/cgi-bin/get_group_list?groupcount=4&count=4&callbackFun=_GetGroupPortal&uin=%d&g_tk=%d&ua=Mozilla%%2F5.0%%20", loginQQ, csrfToken)
 	//logger.Println(url_addr)
 	//logger.Println(cookies)
 
@@ -115,6 +114,10 @@ func getGroups(loginQQ int64, cookies string, csrfToken int64) (groups *Groups) 
 		groupsjson := GroupsJSON{}
 		err = json.Unmarshal([]byte(groupsResp), &groupsjson)
 		if err == nil {
+			if groupsjson.Data == nil {
+				logger.Println(groupsResp)
+				return
+			}
 			for _, g := range groupsjson.Data.Group {
 				row := db.QueryRow("select id, name from groups where group_number = $1", g.GroupID)
 				var groupName string
@@ -176,6 +179,9 @@ func getGroups(loginQQ int64, cookies string, csrfToken int64) (groups *Groups) 
 			i++
 		}
 		groups.RWLocker.Unlock()
+	} else {
+		logger.Printf(groupsResp)
+		logger.Println(urlAddr)
 	}
 	return
 }
@@ -223,6 +229,10 @@ func getGroupMembers(group Group, loginQQ int64, cookies string, csrfToken int64
 		memberjson := GroupMembersJSON{}
 		err = json.Unmarshal([]byte(groupMembersResp), &memberjson)
 		if err == nil {
+			if memberjson.Data == nil {
+				logger.Println(groupMembersResp)
+				return
+			}
 			for _, m := range memberjson.Data.Item {
 				var userID, memberID int64
 				userID, err = getUserID(m.Uin)
@@ -302,6 +312,9 @@ func getGroupMembers(group Group, loginQQ int64, cookies string, csrfToken int64
 			nicknamesInGroup.Members[userQQ] = Member{memberID, userID, group.ID, nickname, rights}
 		}
 		nicknamesInGroup.RWLocker.Unlock()
+	} else {
+		logger.Println(groupMembersResp)
+		logger.Println(urlAddr)
 	}
 	return
 }

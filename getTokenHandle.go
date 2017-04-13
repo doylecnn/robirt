@@ -17,8 +17,9 @@ func getTokenHandle(p Params) {
 	Cookies, _ = p.getString("cookies")
 	logger.Printf("LoginQQ:%d, Csrf_token:%d, Cookies:%s\n", LoginQQ, CsrfToken, Cookies)
 	if !groupsLoaded {
+		logger.Println("refresh groups info")
 		groups = getGroups(LoginQQ, Cookies, CsrfToken)
 		groupsLoaded = true
+		logger.Println("groups info refreshed")
 	}
-	logger.Println("refresh groups info")
 }

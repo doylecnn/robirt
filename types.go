@@ -39,7 +39,7 @@ type Params map[string]json.RawMessage
 // GroupsJSON json info for group
 type GroupsJSON struct {
 	Code int `json:"code"`
-	Data struct {
+	Data *struct {
 		Group []struct {
 			Auth      int    `json:"auth"`
 			Flag      int    `json:"flag"`
@@ -56,7 +56,7 @@ type GroupsJSON struct {
 // GroupMembersJSON json info for group member
 type GroupMembersJSON struct {
 	Code int `json:"code"`
-	Data struct {
+	Data *struct {
 		Alpha      int    `json:"alpha"`
 		BbsCount   int    `json:"bbscount"`
 		Class      int    `json:"class"`
