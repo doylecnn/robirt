@@ -128,15 +128,21 @@ func handleRequest(conn net.Conn) {
 			if len(b) == 0 {
 				logger.Println("len(b)==0", string(b))
 				continue
-			} else if len(tmpbyte) > 0 {
+			} else if len(tmpbyte) > 0 && len(tmpbyte)+len(b) < 4096 {
 				b = append(tmpbyte, b...)
 				logger.Printf("retry b := %s\n", string(b))
+			} else {
+				tmpbyte = tmpbyte[:0]
 			}
 			var js Notification
 			err = json.Unmarshal(b, &js)
 			if err != nil {
 				if serr, ok := err.(*json.SyntaxError); ok {
 					logger.Printf("%s, %s\n", serr.Error(), string(b))
+					if errStr := serr.Error(); strings.HasPrefix(errStr, "invalid character") && strings.HasSuffix(errStr, "in string literal") {
+						tmpbyte = tmpbyte[:0]
+						continue
+					}
 					tmpbyte = append(tmpbyte, b...)
 				} else {
 					logger.Printf("%s, %s\n", err.Error(), string(b))
