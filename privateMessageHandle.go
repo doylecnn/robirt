@@ -41,8 +41,8 @@ func privateMessageHandle(p Params) {
 					reportError(err)
 					return
 				}
-				groups.RWLocker.RLock()
-				for _, group := range groups.Groups {
+				groups.Range(func(k, v interface{}) bool {
+					group := v.(Group)
 					row := trans.QueryRow("select count(1) from replies where key = $1 and reply = $2 and group_id = $3", key, value, group.ID)
 					var count int
 					row.Scan(&count)
@@ -50,11 +50,11 @@ func privateMessageHandle(p Params) {
 						_, err := trans.Exec("insert into replies(author_id ,key, reply, group_id) values($1, $2, $3, $4)", userID, key, value, group.ID)
 						if err != nil {
 							reportError(err)
-							//trans.Rollback()
 						}
 					}
-				}
-				groups.RWLocker.RUnlock()
+					return true
+				})
+
 				trans.Commit()
 				sendPrivateMessage(qqNum, fmt.Sprintf("在 所有 群，有人说 “%s” 我就说 “%s”", key, value))
 			}
@@ -67,8 +67,8 @@ func privateMessageHandle(p Params) {
 			sendPrivateMessage(qqNum, err.Error())
 			return
 		}
-		if g, ok := groups.getGroup(groupNum); ok {
-			groupID = g.ID
+		if g, ok := groups.Load(groupNum); ok {
+			groupID = g.(Group).ID
 		} else {
 			return
 		}
@@ -131,8 +131,8 @@ func privateMessageHandle(p Params) {
 			sendPrivateMessage(qqNum, err.Error())
 			return
 		}
-		if g, ok := groups.getGroup(groupNum); ok {
-			groupID = g.ID
+		if g, ok := groups.Load(groupNum); ok {
+			groupID = g.(Group).ID
 		} else {
 			return
 		}
@@ -171,12 +171,12 @@ func privateMessageHandle(p Params) {
 						return
 					}
 
-					if group, ok := groups.getGroup(groupNum); ok {
+					if group, ok := groups.Load(groupNum); ok {
 						msg := s[1]
 						if atRegex.MatchString(msg) {
 							msg = atRegex.ReplaceAllString(msg, " [CQ:at,qq=$1]")
 						}
-						sendGroupMessage(group.GroupNum, msg)
+						sendGroupMessage(group.(Group).GroupNum, msg)
 					} else {
 						fmt.Println("group not found!")
 						sendPrivateMessage(qqNum, "group not found!")
@@ -190,7 +190,8 @@ func privateMessageHandle(p Params) {
 					return
 				}
 
-				if group, ok := groups.getGroup(groupNum); ok {
+				if v, ok := groups.Load(groupNum); ok {
+					group := v.(Group)
 					sendGroupMessage(group.GroupNum, "我决定离开，再见~")
 					leaveGroup(group.GroupNum, LoginQQ)
 				} else {
@@ -201,13 +202,13 @@ func privateMessageHandle(p Params) {
 				go func() {
 					rand.Seed(time.Now().Unix())
 
-					groups.RWLocker.RLock()
-					for _, group := range groups.Groups {
+					groups.Range(func(k, v interface{}) bool {
+						group := v.(Group)
 						sendGroupMessage(group.GroupNum, strings.TrimSpace(message[10:]))
 						d := time.Duration(rand.Intn(3)+3) * time.Second
 						time.Sleep(d)
-					}
-					groups.RWLocker.RUnlock()
+						return true
+					})
 				}()
 			} else {
 				sendPrivateMessage(qqNum, message)

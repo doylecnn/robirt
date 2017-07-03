@@ -108,7 +108,8 @@ func groupMessageHandle(p Params) {
 	if len(anonymousname) > 0 {
 		nickname = "[匿名]" + anonymousname
 	} else {
-		if group, ok := groups.getGroup(groupNum); ok {
+		if v, ok := groups.Load(groupNum); ok {
+			group := v.(Group)
 			members := group.Members
 			if member, ok := members.getMember(qqNum); ok {
 				nickname = member.Nickname
@@ -116,8 +117,8 @@ func groupMessageHandle(p Params) {
 		}
 	}
 	var group Group
-	if g, ok := groups.getGroup(groupNum); ok {
-		group = g
+	if g, ok := groups.Load(groupNum); ok {
+		group = g.(Group)
 	} else {
 		return
 	}

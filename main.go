@@ -99,8 +99,8 @@ func cmd(cmd string) {
 			return
 		}
 
-		if g, ok := groups.getGroup(groupNum); ok {
-			sendGroupMessage(g.GroupNum, s[1])
+		if g, ok := groups.Load(groupNum); ok {
+			sendGroupMessage(g.(Group).GroupNum, s[1])
 		} else {
 			fmt.Println("group not found!")
 		}
@@ -200,7 +200,8 @@ func eventLoop() {
 				continue
 			}
 			//beingOperateQQ := js.Params.GetInt64("opqqnum")
-			if group, ok := groups.getGroup(groupNum); ok {
+			if v, ok := groups.Load(groupNum); ok {
+				group := v.(Group)
 				members := group.Members
 				if member, ok := members.getMember(qqNum); ok {
 					if subtype == 1 {

@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-var groups = &Groups{sync.RWMutex{}, make(map[int64]Group)}
-var users = &Users{sync.RWMutex{}, make(map[int64]User)}
+var groups = new(sync.Map)
+var users = new(sync.Map)
 var timeouts = make(map[string]time.Time)
 var robirtLastActive = make(map[int64]time.Time)
 var robirtLastActiveForDiscuss = make(map[int64]time.Time)

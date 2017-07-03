@@ -69,11 +69,7 @@ func jsonTrans(json string) string {
 	return json
 }
 
-func getGroups(loginQQ int64, cookies string, csrfToken int64) (groups *Groups) {
-	if groups == nil {
-		groups = &Groups{sync.RWMutex{}, make(map[int64]Group)}
-	}
-
+func getGroups(loginQQ int64, cookies string, csrfToken int64) (groups *sync.Map) {
 	urlAddr := fmt.Sprintf("http://qun.qzone.qq.com/cgi-bin/get_group_list?groupcount=4&count=4&callbackFun=_GetGroupPortal&uin=%d&g_tk=%d&ua=Mozilla%%2F5.0%%20", loginQQ, csrfToken)
 	//logger.Println(url_addr)
 	//logger.Println(cookies)
@@ -163,7 +159,6 @@ func getGroups(loginQQ int64, cookies string, csrfToken int64) (groups *Groups) 
 		rows.Close()
 
 		i := 0
-		groups.RWLocker.Lock()
 		for rows.Next() {
 			var groupName string
 			var groupID int64
@@ -174,11 +169,10 @@ func getGroups(loginQQ int64, cookies string, csrfToken int64) (groups *Groups) 
 			group.GroupNum = groupNum
 			group.GroupName = groupName
 			group.Members = getGroupMembers(group, LoginQQ, Cookies, CsrfToken)
-			groups.Groups[groupNum] = group
+			groups.Store(groupNum, group)
 			logger.Printf("%d: %s[%d]", i, group.GroupName, groupNum)
 			i++
 		}
-		groups.RWLocker.Unlock()
 	} else {
 		logger.Printf(groupsResp)
 		logger.Println(urlAddr)
@@ -352,8 +346,8 @@ func spliteN(s string) (result []string) {
 }
 
 func getGroupID(groupNum int64) (groupID int64, err error) {
-	if group, ok := groups.getGroup(groupNum); ok {
-		groupID = group.ID
+	if group, ok := groups.Load(groupNum); ok {
+		groupID = group.(Group).ID
 		return
 	}
 	row := db.QueryRow("select id, name from groups where group_number = $1", groupNum)
@@ -364,12 +358,7 @@ func getGroupID(groupNum int64) (groupID int64, err error) {
 	g.GroupNum = groupNum
 	g.GroupName = groupName
 	g.Members = getGroupMembers(g, LoginQQ, Cookies, CsrfToken)
-	if groups == nil {
-		groups = &Groups{}
-	}
-	groups.RWLocker.Lock()
-	groups.Groups[groupNum] = g
-	groups.RWLocker.Unlock()
+	groups.Store(groupNum, g)
 	return
 }
 
@@ -383,22 +372,17 @@ func getDiscussID(discussNum int64) (discussID int64, err error) {
 }
 
 func getUserID(qqNum int64) (userID int64, err error) {
-	if user, ok := users.getUser(qqNum); ok {
-		userID = user.ID
+	if user, ok := users.Load(qqNum); ok {
+		userID = user.(User).ID
 		return
 	}
 	row := db.QueryRow("select id, qq_name from users where qq_number = $1", qqNum)
 	var name sql.NullString
 	err = row.Scan(&userID, &name)
-	if users == nil {
-		users = &Users{}
-	}
-	users.RWLocker.Lock()
 	if name.Valid {
-		users.Users[qqNum] = User{userID, qqNum, name.String}
+		users.Store(qqNum, User{userID, qqNum, name.String})
 	} else {
-		users.Users[qqNum] = User{userID, qqNum, ""}
+		users.Store(qqNum, User{userID, qqNum, ""})
 	}
-	users.RWLocker.Unlock()
 	return
 }

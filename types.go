@@ -97,19 +97,6 @@ type Member struct {
 	Rights   int
 }
 
-// Users users map
-type Users struct {
-	RWLocker sync.RWMutex
-	Users    map[int64]User
-}
-
-func (u *Users) getUser(qqNum int64) (user User, ok bool) {
-	u.RWLocker.RLock()
-	defer u.RWLocker.RUnlock()
-	user, ok = u.Users[qqNum]
-	return
-}
-
 // Members members map
 type Members struct {
 	RWLocker sync.RWMutex
@@ -129,19 +116,6 @@ type Group struct {
 	GroupNum  int64
 	GroupName string
 	Members   *Members
-}
-
-// Groups groups map
-type Groups struct {
-	RWLocker sync.RWMutex
-	Groups   map[int64]Group
-}
-
-func (g *Groups) getGroup(groupNum int64) (group Group, ok bool) {
-	g.RWLocker.RLock()
-	defer g.RWLocker.RUnlock()
-	group, ok = g.Groups[groupNum]
-	return
 }
 
 type token struct {
