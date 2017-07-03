@@ -60,7 +60,7 @@ func main() {
 		}
 		ln, err := net.ListenTCP("tcp4", localAddress)
 		if err != nil {
-			logger.Fatal("Failed to listening server: %v", err)
+			logger.Fatalf("Failed to listening server: %v", err)
 		}
 		logger.Println("Listening server on tcp:127.0.0.1:7008")
 
@@ -216,12 +216,12 @@ func eventLoop() {
 		case "RequestAddFriend":
 			responseFlag, _ := js.Params.getString("response_flag")
 			addFriend(responseFlag, 1, "")
-		case "RequestAddGroup":
-			responseFlag, _ := js.Params.getString("response_flag")
-			if subtype == 2 {
-				addGroup(responseFlag, 2, 1, "")
-			}
-			getToken()
+		// case "RequestAddGroup":
+		// 	responseFlag, _ := js.Params.getString("response_flag")
+		// 	if subtype == 2 {
+		// 		addGroup(responseFlag, 2, 1, "")
+		// 	}
+		// 	getToken()
 		default:
 			logger.Printf("未处理：%s\n", js)
 		}
