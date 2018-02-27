@@ -85,3 +85,18 @@ func sendNotification(notification string) {
 	clientConn.Close()
 	clientConn = nil
 }
+
+func getGroupList() {
+	json := fmt.Sprintf("{\"method\":\"GetGroupList\",\"params\":{}}")
+	sendNotification(json)
+}
+
+func getGroupMemberList(groupNum int64) {
+	json := fmt.Sprintf("{\"method\":\"GetGroupMemberList\",\"params\":{\"groupnum\":%d}}", groupNum)
+	sendNotification(json)
+}
+
+func getGroupMemberInfo(groupNum, qqNum int64) {
+	json := fmt.Sprintf("{\"method\":\"GetGroupMemberList\",\"params\":{\"groupnum\":%d,\"qqnum\":%d}}", groupNum, qqNum)
+	sendNotification(json)
+}
