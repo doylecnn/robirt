@@ -24,6 +24,7 @@ var (
 	closeSignChan = make(chan struct{})
 	requestChan   = make(chan Notification, 1)
 	gLogFile      *os.File
+	LoginQQ       int64
 )
 
 func main() {
@@ -64,7 +65,6 @@ func main() {
 		}
 		logger.Println("Listening server on tcp:127.0.0.1:7008")
 
-		var groupsLoaded = false
 		for {
 			conn, err := ln.Accept()
 			if err != nil {
@@ -72,9 +72,6 @@ func main() {
 				continue
 			}
 			go handleRequest(conn)
-			if !groupsLoaded {
-				getToken()
-			}
 		}
 	}()
 
@@ -157,23 +154,18 @@ func handleRequest(conn net.Conn) {
 }
 
 func serverStart() {
-	for {
-		js := <-requestChan
-
-		if js.Method == "Token" {
-			getTokenHandle(js.Params)
-			go eventLoop()
-			break
-		}
-	}
+	eventLoop()
 }
 
 func eventLoop() {
 	for {
 		js := <-requestChan
 
-		if js.Method == "Token" {
-			go getTokenHandle(js.Params)
+		if js.Method == "LoginQq" {
+			LoginQQ, _ = js.Params.getInt64("loginqq")
+			continue
+		} else if js.Method == "GroupMemberList" || js.Method == "GroupMemberInfo" {
+			logger.Printf(">>> %v\n", js)
 			continue
 		}
 
@@ -192,7 +184,7 @@ func eventLoop() {
 			beingOperateQQ, _ := js.Params.getInt64("opqqnum")
 			message := welcomeNewMember(subtype, groupNum, qqNum, beingOperateQQ)
 			sendGroupMessage(groupNum, message)
-			getToken()
+			getGroupMemberList(groupNum)
 		case "GroupMemberLeave":
 			qqNum, _ := js.Params.getInt64("qqnum")
 			groupNum, _ := js.Params.getInt64("groupnum")
@@ -213,16 +205,21 @@ func eventLoop() {
 					}
 				}
 			}
-			getToken()
 		case "RequestAddFriend":
 			responseFlag, _ := js.Params.getString("response_flag")
 			addFriend(responseFlag, 1, "")
-		// case "RequestAddGroup":
-		// 	responseFlag, _ := js.Params.getString("response_flag")
-		// 	if subtype == 2 {
-		// 		addGroup(responseFlag, 2, 1, "")
-		// 	}
-		// 	getToken()
+		case "RequestAddGroup":
+			responseFlag, _ := js.Params.getString("response_flag")
+			if subtype == 2 {
+				addGroup(responseFlag, 2, 1, "")
+			}
+			getGroupList()
+		case "GroupMemberList":
+			logger.Printf(">>> %s\n", js)
+		case "GroupList":
+			logger.Printf(">>> %s\n", js)
+		case "":
+			logger.Printf(">>> %s\n", js)
 		default:
 			logger.Printf("未处理：%s\n", js)
 		}

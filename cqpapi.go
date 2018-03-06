@@ -97,6 +97,6 @@ func getGroupMemberList(groupNum int64) {
 }
 
 func getGroupMemberInfo(groupNum, qqNum int64) {
-	json := fmt.Sprintf("{\"method\":\"GetGroupMemberList\",\"params\":{\"groupnum\":%d,\"qqnum\":%d}}", groupNum, qqNum)
+	json := fmt.Sprintf("{\"method\":\"GetGroupMemberInfo\",\"params\":{\"groupnum\":%d,\"qqnum\":%d}}", groupNum, qqNum)
 	sendNotification(json)
 }
