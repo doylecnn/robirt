@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/BurntSushi/toml"
 	_ "github.com/lib/pq"
@@ -28,6 +30,7 @@ var (
 )
 
 func main() {
+	rand.Seed(42)
 	var err error
 	logFilename := "robirt.log"
 	gLogFile, err = os.OpenFile(logFilename, os.O_RDWR|os.O_CREATE, 0777)
@@ -52,6 +55,9 @@ func main() {
 		panic(err)
 	}
 	defer db.Close()
+
+	db.SetConnMaxLifetime(60)
+	db.SetMaxIdleConns(5)
 
 	go serverStart()
 	go func() {
@@ -87,6 +93,34 @@ func main() {
 func cmd(cmd string) {
 	if cmd == "exit" {
 		close(closeSignChan)
+		return
+	} else if cmd == "init" {
+		getLoginQQ()
+		getGroupList()
+		return
+	} else if strings.HasPrefix(cmd, "random:") {
+		var i int32 = 0
+		var target = rand.Int31n(300)
+		groups.Range(func(key, value interface{}) bool {
+			if i == target {
+				sendGroupMessage(value.(Group).GroupNum, cmd[7:])
+				return false
+			}
+			i++
+			return true
+		})
+		return
+	} else if strings.HasPrefix(cmd, "level:") {
+		groupNum, err := strconv.ParseInt(strings.TrimSpace(cmd[6:]), 10, 64)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		if _, ok := groups.Load(groupNum); ok {
+			leaveGroup(groupNum, LoginQQ)
+			getGroupList()
+		}
+		return
 	}
 	s := strings.SplitN(strings.TrimSpace(cmd), ":", 2)
 	if len(s) == 2 {
@@ -163,9 +197,7 @@ func eventLoop() {
 
 		if js.Method == "LoginQq" {
 			LoginQQ, _ = js.Params.getInt64("loginqq")
-			continue
-		} else if js.Method == "GroupMemberList" || js.Method == "GroupMemberInfo" {
-			logger.Printf(">>> %v\n", js)
+			logger.Printf(">>> %d\n", LoginQQ)
 			continue
 		}
 
@@ -195,7 +227,11 @@ func eventLoop() {
 			if v, ok := groups.Load(groupNum); ok {
 				group := v.(Group)
 				members := group.Members
-				if member, ok := members.getMember(qqNum); ok {
+				if members == nil {
+					continue
+				}
+				if v, ok := members.Load(qqNum); ok {
+					member := v.(Member)
 					if subtype == 1 {
 						message := fmt.Sprintf("群员:[%s] 退群了!!!", member.Nickname)
 						sendGroupMessage(groupNum, message)
@@ -215,13 +251,215 @@ func eventLoop() {
 			}
 			getGroupList()
 		case "GroupMemberList":
-			logger.Printf(">>> %s\n", js)
+			var groupMemberList []Member
+			if err := js.Params.UnmarshalGroupMemberList(&groupMemberList); err != nil {
+				logger.Printf(">>> get group member list faild: %v", err)
+			}
+			logger.Printf(">>> %s\n", groupMemberList)
+			updateGroupMember(groupMemberList)
 		case "GroupList":
-			logger.Printf(">>> %s\n", js)
-		case "":
-			logger.Printf(">>> %s\n", js)
+			var grouplist []Group
+			if err := js.Params.UnmarshalGroupList(&grouplist); err != nil {
+				logger.Printf(">>> get group list faild: %v", err)
+			}
+			logger.Printf(">>> %s\n", grouplist)
+			updateGroupList(grouplist)
+		case "GroupMemberInfo":
+			var memberInfo Member
+			if err := js.Params.UnmarshalGroupMemberInfo(&memberInfo); err != nil {
+				logger.Printf(">>> get member info faild: %v", err)
+			}
+			logger.Printf(">>> %s\n", memberInfo)
+			updateMemberInfo(memberInfo)
 		default:
 			logger.Printf("未处理：%s\n", js)
+		}
+	}
+}
+
+func GetGroupListFromDB() {
+	rows, err := db.Query("select id, group_number, name from groups")
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var groupName string
+		var groupID int64
+		var groupNum int64
+		rows.Scan(&groupID, &groupNum, &groupName)
+
+		if v, ok := groups.Load(groupNum); ok {
+			group := v.(Group)
+			if groupName != group.GroupName {
+				group.GroupName = groupName
+			}
+		} else {
+			group := Group{}
+			group.ID = groupID
+			group.GroupNum = groupNum
+			group.GroupName = groupName
+			group.Members = GetGroupMembersFromDB(group.ID, group.GroupNum)
+			groups.Store(groupNum, group)
+		}
+	}
+}
+
+func GetGroupMembersFromDB(groupId int64, groupNumbber int64) *sync.Map {
+	memberList := new(sync.Map)
+	rows, err := db.Query("select m.id, m.user_id, u.qq_number, m.Nickname, m.Rights from group_members m join users u on m.user_id = u.id where m.group_id = $1", groupId)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int64
+		var userId int64
+		var qq_number int64
+		var nickname string
+		var rights int32
+		rows.Scan(&id, &userId, &qq_number, &nickname, &rights)
+		m := Member{}
+		m.ID = id
+		m.UserID = userId
+		m.GroupID = groupId
+		m.GroupNum = groupNumbber
+		m.QQNum = qq_number
+		m.Nickname = nickname
+		m.Permission = rights
+		memberList.Store(qq_number, m)
+	}
+	return memberList
+}
+
+func updateGroupList(groupList []Group) {
+	if len(groupList) == 0 {
+		return
+	}
+	GetGroupListFromDB()
+	var groupNums []int64 = []int64{}
+	for _, ng := range groupList {
+		groupNums = append(groupNums, ng.GroupNum)
+		if v, ok := groups.Load(ng.GroupNum); ok {
+			og := v.(Group)
+			if og.GroupName != ng.GroupName {
+				og.GroupName = ng.GroupName
+				trans, err := db.Begin()
+				if err != nil {
+					//reportError(err)
+					continue
+				}
+				_, err = trans.Exec("update groups set name = $1 where Id = $2", ng.GroupName, og.ID)
+				if err != nil {
+					//reportError(err)
+					trans.Rollback()
+					continue
+				} else {
+					trans.Commit()
+				}
+			}
+		} else {
+			var groupID int64
+			trans, err := db.Begin()
+			if err != nil {
+				//reportError(err)
+				continue
+			}
+			err = trans.QueryRow("insert into groups(group_number, name) values($1, $2) returning id", ng.GroupNum, ng.GroupName).Scan(&groupID)
+			if err != nil {
+				//reportError(err)
+				trans.Rollback()
+				continue
+			} else {
+				trans.Commit()
+			}
+			groups.Store(groupID, Group{ID: groupID, GroupNum: ng.GroupNum, GroupName: ng.GroupName, Members: nil})
+			getGroupMemberList(ng.GroupNum)
+		}
+	}
+	var waitForDeleteGroupNums []int64 = []int64{}
+	groups.Range(func(key, value interface{}) bool {
+		found := false
+		for _, num := range groupNums {
+			if num == key {
+				found = true
+				break
+			}
+		}
+		if !found {
+			g := value.(Group)
+			waitForDeleteGroupNums = append(waitForDeleteGroupNums, g.GroupNum)
+			trans, err := db.Begin()
+			if err != nil {
+				return true
+			}
+			_, err = trans.Exec("delete from replies where group_id = $1", g.ID)
+			if err != nil {
+				trans.Rollback()
+				return true
+			}
+			_, err = trans.Exec("delete from group_members where group_id = $1", g.ID)
+			if err != nil {
+				trans.Rollback()
+				return true
+			}
+			_, err = trans.Exec("delete from groups where id = $1", g.ID)
+			if err != nil {
+				trans.Rollback()
+			} else {
+				trans.Commit()
+			}
+		}
+		return true
+	})
+	for _, num := range waitForDeleteGroupNums {
+		groups.Delete(num)
+	}
+}
+
+func updateGroupMember(groupMemberList []Member) {
+	flag := true
+	for _, nm := range groupMemberList {
+		if v, ok := groups.Load(nm.GroupNum); ok {
+			g := v.(Group)
+			if flag {
+				g.Members = GetGroupMembersFromDB(g.ID, g.GroupNum)
+				flag = false
+			}
+			if _, ok := g.Members.Load(nm.QQNum); !ok {
+				g.Members.Store(nm.QQNum, nm)
+				trans, err := db.Begin()
+				if err != nil {
+					//reportError(err)
+					continue
+				}
+				var userID int64
+				err = trans.QueryRow("select id from users where qq_numer = $1", nm.QQNum).Scan(&userID)
+				if err != nil {
+					//reportError(err)
+					trans.Rollback()
+					continue
+				}
+				_, err = trans.Exec("insert into group_members(group_id, user_id, nickname, rights) values($1, $2, $3, $4) returning id", g.ID, userID, nm.Nickname, nm.Permission)
+				if err != nil {
+					//reportError(err)
+					trans.Rollback()
+					continue
+				} else {
+					trans.Commit()
+				}
+			}
+		}
+	}
+}
+
+func updateMemberInfo(memberInfo Member) {
+	if v, ok := groups.Load(memberInfo.GroupNum); ok {
+		g := v.(Group)
+		if _, ok := g.Members.Load(memberInfo.QQNum); !ok {
+			g.Members.Store(memberInfo.QQNum, memberInfo)
 		}
 	}
 }

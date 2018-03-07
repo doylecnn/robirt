@@ -30,6 +30,18 @@ func (p Params) getTime(key string) (t time.Time, err error) {
 	return
 }
 
+func (p Params) UnmarshalGroupList(v *[]Group) error {
+	return json.Unmarshal(p["group_list"], v)
+}
+
+func (p Params) UnmarshalGroupMemberList(v *[]Member) error {
+	return json.Unmarshal(p["member_list"], v)
+}
+
+func (p Params) UnmarshalGroupMemberInfo(v *Member) error {
+	return json.Unmarshal(p["member"], v)
+}
+
 func reportError(err error) {
 	if err != nil {
 		errMessage := err.Error()

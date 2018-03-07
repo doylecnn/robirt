@@ -36,51 +36,6 @@ type Notification struct {
 // Params json part
 type Params map[string]json.RawMessage
 
-// GroupsJSON json info for group
-type GroupsJSON struct {
-	Code int `json:"code"`
-	Data *struct {
-		Group []struct {
-			Auth      int    `json:"auth"`
-			Flag      int    `json:"flag"`
-			GroupID   int    `json:"groupid"`
-			GroupName string `json:"groupname"`
-		} `json:"group"`
-		Total int `json:"total"`
-	} `json:"data"`
-	Default int    `json:"default"`
-	Message string `json:"message"`
-	Subcode int    `json:"subcode"`
-}
-
-// GroupMembersJSON json info for group member
-type GroupMembersJSON struct {
-	Code int `json:"code"`
-	Data *struct {
-		Alpha      int    `json:"alpha"`
-		BbsCount   int    `json:"bbscount"`
-		Class      int    `json:"class"`
-		CreateTime int    `json:"create_time"`
-		FileCount  int    `json:"filecount"`
-		FingerMemo string `json:"finger_memo"`
-		GroupMemo  string `json:"group_memo"`
-		GroupName  string `json:"group_name"`
-		Item       []struct {
-			Iscreator int    `json:"iscreator"`
-			Ismanager int    `json:"ismanager"`
-			Nick      string `json:"nick"`
-			Uin       int64  `json:"uin"`
-		} `json:"item"`
-		Level  int    `json:"level"`
-		Nick   string `json:"nick"`
-		Option int    `json:"option"`
-		Total  int    `json:"total"`
-	} `json:"data"`
-	Default int    `json:"default"`
-	Message string `json:"message"`
-	Subcode int    `json:"subcode"`
-}
-
 // User user info
 type User struct {
 	ID     int64
@@ -90,32 +45,32 @@ type User struct {
 
 // Member member info
 type Member struct {
-	ID       int64
-	UserID   int64
-	GroupID  int64
-	Nickname string
-	Rights   int
-}
-
-// Members members map
-type Members struct {
-	RWLocker sync.RWMutex
-	Members  map[int64]Member
-}
-
-func (m *Members) getMember(qqNum int64) (member Member, ok bool) {
-	m.RWLocker.RLock()
-	defer m.RWLocker.RUnlock()
-	member, ok = m.Members[qqNum]
-	return
+	ID                      int64
+	UserID                  int64
+	GroupID                 int64
+	GroupNum                int64  `json:"group_id"`
+	QQNum                   int64  `json:"qq_id"`
+	Nickname                string `json:"nickname"`
+	Namecard                string `json:"namecard"`
+	Sex                     int32  `json:"sex"`
+	Age                     int32  `json:"age"`
+	Area                    string `json:"area"`
+	JoinTime                int32  `json:"join_time"`
+	LastActive              int32  `json:"last_active"`
+	LevelName               string `json:"level_name"`
+	Permission              int32  `json:"permission"`
+	BadRecord               bool   `json:"bad_record"`
+	SpecialTitle            string `json:"special_title"`
+	SpecialTitleExpressTime int32  `json:"special_title_express_time"`
+	AllowModifyNamecard     bool   `json:"allow_modify_namecard"`
 }
 
 // Group group info
 type Group struct {
 	ID        int64
-	GroupNum  int64
-	GroupName string
-	Members   *Members
+	GroupNum  int64  `json:"id"`
+	GroupName string `json:"name"`
+	Members   *sync.Map
 }
 
 type token struct {

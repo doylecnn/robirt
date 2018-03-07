@@ -104,24 +104,27 @@ func groupMessageHandle(p Params) {
 	groupNum, _ := p.getInt64("groupnum")
 	userID, _ := getUserID(qqNum)
 	groupID, _ := getGroupID(groupNum)
-	var nickname string
-	if len(anonymousname) > 0 {
-		nickname = "[匿名]" + anonymousname
-	} else {
-		// if v, ok := groups.Load(groupNum); ok {
-		// 	group := v.(Group)
-		// 	members := group.Members
-		// 	if member, ok := members.getMember(qqNum); ok {
-		// 		nickname = member.Nickname
-		// 	}
-		// }
-	}
+
 	var group Group
 	if g, ok := groups.Load(groupNum); ok {
 		group = g.(Group)
 	} else {
 		return
 	}
+
+	var nickname string
+	if len(anonymousname) > 0 {
+		nickname = "[匿名]" + anonymousname
+	} else {
+		if group.Members != nil {
+			if v, ok := group.Members.Load(qqNum); ok {
+				nickname = v.(Member).Nickname
+			}
+		} else {
+			getGroupMemberList(group.GroupNum)
+		}
+	}
+
 	logger.Printf("\n>>> %s(%d)-%s(%d):\n>>> %s\n", group.GroupName, groupNum, nickname, qqNum, message)
 
 	if "!help" == message || "！help" == message || "/help" == message {

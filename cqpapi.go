@@ -86,6 +86,11 @@ func sendNotification(notification string) {
 	clientConn = nil
 }
 
+func getLoginQQ() {
+	json := fmt.Sprintf("{\"method\":\"GetLoginQq\",\"params\":{}}")
+	sendNotification(json)
+}
+
 func getGroupList() {
 	json := fmt.Sprintf("{\"method\":\"GetGroupList\",\"params\":{}}")
 	sendNotification(json)
