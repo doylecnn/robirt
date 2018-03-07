@@ -24,8 +24,8 @@ func addGroup(responseFlag string, subtype, accept int32, reason string) {
 	sendNotification(json)
 }
 
-func leaveGroup(groupNum, qqNum int64) {
-	json := fmt.Sprintf("{\"method\":\"GroupLeave\",\"params\":{\"groupnum\":%d,\"qqnum\":%d}}", groupNum, qqNum)
+func leaveGroup(groupNum int64) {
+	json := fmt.Sprintf("{\"method\":\"GroupLeave\",\"params\":{\"groupnum\":%d}}", groupNum)
 	sendNotification(json)
 }
 

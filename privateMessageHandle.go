@@ -193,7 +193,7 @@ func privateMessageHandle(p Params) {
 				if v, ok := groups.Load(groupNum); ok {
 					group := v.(Group)
 					sendGroupMessage(group.GroupNum, "我决定离开，再见~")
-					leaveGroup(group.GroupNum, LoginQQ)
+					leaveGroup(group.GroupNum)
 				} else {
 					fmt.Println("group not found!")
 					sendPrivateMessage(qqNum, "group not found!")

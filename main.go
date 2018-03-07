@@ -117,7 +117,7 @@ func cmd(cmd string) {
 			return
 		}
 		if _, ok := groups.Load(groupNum); ok {
-			leaveGroup(groupNum, LoginQQ)
+			leaveGroup(groupNum)
 			getGroupList()
 		}
 		return
@@ -255,22 +255,22 @@ func eventLoop() {
 			if err := js.Params.UnmarshalGroupMemberList(&groupMemberList); err != nil {
 				logger.Printf(">>> get group member list faild: %v", err)
 			}
-			logger.Printf(">>> %s\n", groupMemberList)
-			updateGroupMember(groupMemberList)
+			logger.Printf(">>> %v\n", groupMemberList)
+			go updateGroupMember(groupMemberList)
 		case "GroupList":
 			var grouplist []Group
 			if err := js.Params.UnmarshalGroupList(&grouplist); err != nil {
 				logger.Printf(">>> get group list faild: %v", err)
 			}
-			logger.Printf(">>> %s\n", grouplist)
-			updateGroupList(grouplist)
+			//logger.Printf(">>> %v\n", grouplist)
+			go updateGroupList(grouplist)
 		case "GroupMemberInfo":
 			var memberInfo Member
 			if err := js.Params.UnmarshalGroupMemberInfo(&memberInfo); err != nil {
 				logger.Printf(">>> get member info faild: %v", err)
 			}
-			logger.Printf(">>> %s\n", memberInfo)
-			updateMemberInfo(memberInfo)
+			logger.Printf(">>> %v\n", memberInfo)
+			go updateMemberInfo(memberInfo)
 		default:
 			logger.Printf("未处理：%s\n", js)
 		}
@@ -290,12 +290,7 @@ func GetGroupListFromDB() {
 		var groupNum int64
 		rows.Scan(&groupID, &groupNum, &groupName)
 
-		if v, ok := groups.Load(groupNum); ok {
-			group := v.(Group)
-			if groupName != group.GroupName {
-				group.GroupName = groupName
-			}
-		} else {
+		if _, ok := groups.Load(groupNum); !ok {
 			group := Group{}
 			group.ID = groupID
 			group.GroupNum = groupNum
@@ -346,6 +341,7 @@ func updateGroupList(groupList []Group) {
 			og := v.(Group)
 			if og.GroupName != ng.GroupName {
 				og.GroupName = ng.GroupName
+				groups.Store(ng.GroupNum, og)
 				trans, err := db.Begin()
 				if err != nil {
 					//reportError(err)
@@ -375,7 +371,7 @@ func updateGroupList(groupList []Group) {
 			} else {
 				trans.Commit()
 			}
-			groups.Store(groupID, Group{ID: groupID, GroupNum: ng.GroupNum, GroupName: ng.GroupName, Members: nil})
+			groups.Store(ng.GroupNum, Group{ID: groupID, GroupNum: ng.GroupNum, GroupName: ng.GroupName, Members: nil})
 			getGroupMemberList(ng.GroupNum)
 		}
 	}
@@ -417,6 +413,10 @@ func updateGroupList(groupList []Group) {
 	for _, num := range waitForDeleteGroupNums {
 		groups.Delete(num)
 	}
+	groups.Range(func(key, value interface{}) bool {
+		log.Printf(">>> new groups: %v\n", value.(Group))
+		return true
+	})
 }
 
 func updateGroupMember(groupMemberList []Member) {
@@ -428,6 +428,9 @@ func updateGroupMember(groupMemberList []Member) {
 				g.Members = GetGroupMembersFromDB(g.ID, g.GroupNum)
 				flag = false
 			}
+			if g.Members == nil {
+				g.Members = new(sync.Map)
+			}
 			if _, ok := g.Members.Load(nm.QQNum); !ok {
 				g.Members.Store(nm.QQNum, nm)
 				trans, err := db.Begin()
@@ -436,11 +439,27 @@ func updateGroupMember(groupMemberList []Member) {
 					continue
 				}
 				var userID int64
-				err = trans.QueryRow("select id from users where qq_numer = $1", nm.QQNum).Scan(&userID)
+				var count int64
+				err = trans.QueryRow("select count(1) from users where qq_numer = $1", nm.QQNum).Scan(&count)
 				if err != nil {
 					//reportError(err)
 					trans.Rollback()
 					continue
+				}
+				if count > 0 {
+					err = trans.QueryRow("select id from users where qq_numer = $1", nm.QQNum).Scan(&userID)
+					if err != nil {
+						//reportError(err)
+						trans.Rollback()
+						continue
+					}
+				} else {
+					err = trans.QueryRow("insert into users(qq_number, qq_name) values($1, $2) returning id", nm.QQNum, nm.Nickname).Scan(&userID)
+					if err != nil {
+						//reportError(err)
+						trans.Rollback()
+						continue
+					}
 				}
 				_, err = trans.Exec("insert into group_members(group_id, user_id, nickname, rights) values($1, $2, $3, $4) returning id", g.ID, userID, nm.Nickname, nm.Permission)
 				if err != nil {
