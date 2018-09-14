@@ -32,7 +32,7 @@ func privateMessageHandle(p Params) {
 			sendGroupMessage(qqNum, "太长记不住！")
 		} else {
 			key := strings.TrimSpace(kv[1])
-			if len(key) < 2 {
+			if len([]rune(key)) < 2 {
 				sendGroupMessage(qqNum, "触发字太短了！")
 			} else {
 				value := kv[2]
@@ -43,13 +43,18 @@ func privateMessageHandle(p Params) {
 				}
 				groups.Range(func(k, v interface{}) bool {
 					group := v.(Group)
-					row := trans.QueryRow("select count(1) from replies where key = $1 and reply = $2 and group_id = $3", key, value, group.ID)
 					var count int
-					row.Scan(&count)
+					err := trans.QueryRow("select count(1) from replies where key = $1 and reply = $2 and group_id = $3", key, value, group.ID).Scan(&count)
+					if err != nil {
+						trans.Rollback()
+						return true
+					}
 					if count == 0 {
 						_, err := trans.Exec("insert into replies(author_id ,key, reply, group_id) values($1, $2, $3, $4)", userID, key, value, group.ID)
 						if err != nil {
 							reportError(err)
+							trans.Rollback()
+							return false
 						}
 					}
 					return true
@@ -88,9 +93,12 @@ func privateMessageHandle(p Params) {
 					reportError(err)
 					return
 				}
-				row := trans.QueryRow("select count(1) from replies where key = $1 and reply = $2 and group_id = $3", key, value, groupID)
 				var count int
-				row.Scan(&count)
+				err = trans.QueryRow("select count(1) from replies where key = $1 and reply = $2 and group_id = $3", key, value, groupID).Scan(&count)
+				if err != nil {
+					trans.Rollback()
+					return
+				}
 				if count == 0 {
 					_, err := trans.Exec("insert into replies(author_id ,key, reply, group_id) values($1, $2, $3, $4)", userID, key, value, groupID)
 					if err != nil {

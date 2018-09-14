@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	_ "github.com/lib/pq"
@@ -56,8 +57,9 @@ func main() {
 	}
 	defer db.Close()
 
-	db.SetConnMaxLifetime(60)
-	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(10 * time.Second)
+	db.SetMaxIdleConns(4)
+	db.SetMaxOpenConns(20)
 
 	go serverStart()
 	go func() {
@@ -140,9 +142,9 @@ func cmd(cmd string) {
 
 func handleRequest(conn net.Conn) {
 	defer conn.Close()
-	tmpbyte := make([]byte, 4096)
+	tmpbyte := make([]byte, 2<<22)
 	tmpbyte = tmpbyte[:0]
-	buf := make([]byte, 4096*16)
+	buf := make([]byte, 2<<20)
 	for {
 		// Read the incoming connection into the buffer.
 		reqLen, err := conn.Read(buf)
@@ -372,7 +374,7 @@ func updateGroupList(groupList []Group) {
 				trans.Commit()
 			}
 			groups.Store(ng.GroupNum, Group{ID: groupID, GroupNum: ng.GroupNum, GroupName: ng.GroupName, Members: nil})
-			getGroupMemberList(ng.GroupNum)
+			//getGroupMemberList(ng.GroupNum)
 		}
 	}
 	var waitForDeleteGroupNums []int64 = []int64{}

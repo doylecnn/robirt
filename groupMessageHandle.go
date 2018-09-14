@@ -35,6 +35,7 @@ func listReplies(key string, groupID, groupNum int64) {
 		reportError(err)
 		return
 	}
+	defer rows.Close()
 	var list []string
 	var i = 0
 	for rows.Next() {
@@ -67,9 +68,12 @@ func techReplies(key, reply string, userID, groupID, groupNum int64) {
 		if len([]rune(key)) < 2 && len(makeTokens(reply)) < 2 {
 			sendGroupMessage(groupNum, "触发字太短了！")
 		} else {
-			row := db.QueryRow("select count(1) from replies where key = $1 and reply = $2 and group_id = $3", key, reply, groupID)
 			var count int
-			row.Scan(&count)
+			err := db.QueryRow("select count(1) from replies where key = $1 and reply = $2 and group_id = $3", key, reply, groupID).Scan(&count)
+			if err != nil {
+				reportError(err)
+				return
+			}
 			if count == 0 {
 				trans, err := db.Begin()
 				if err != nil {
@@ -120,27 +124,34 @@ func groupMessageHandle(p Params) {
 			if v, ok := group.Members.Load(qqNum); ok {
 				nickname = v.(Member).Nickname
 			}
-		} else {
-			getGroupMemberList(group.GroupNum)
+			// } else {
+			// 	getGroupMemberList(group.GroupNum)
 		}
 	}
 
 	logger.Printf("\n>>> %s(%d)-%s(%d):\n>>> %s\n", group.GroupName, groupNum, nickname, qqNum, message)
 
+	if lastActive, ok := robirtLastActive[groupNum]; ok && time.Since(lastActive).Seconds() < config.Robirt.Cdtime {
+		return
+	}
+
 	if "!help" == message || "！help" == message || "/help" == message {
 		sendGroupMessage(groupNum, "!add 触发字=触发内容  添加一条\n!del 触发字=触发内容  删除一条\n!list 触发字  列出该触发字下的所有条目\n没有其他的了……")
+		robirtLastActive[groupNum] = time.Now()
 	} else if delCmd.MatchString(message) {
 		kv := delCmd.FindAllStringSubmatch(message, 1)[0]
 		delReplies(kv[1], kv[2], groupID, groupNum)
+		robirtLastActive[groupNum] = time.Now()
 	} else if listCmd.MatchString(message) {
 		kv := listCmd.FindAllStringSubmatch(message, 1)[0]
 		listReplies(kv[1], groupID, groupNum)
+		robirtLastActive[groupNum] = time.Now()
 	} else if techCmd.MatchString(message) {
 		kv := techCmd.FindAllStringSubmatch(message, 1)[0]
 		key := strings.TrimSpace(kv[1])
 		reply := kv[2]
 		techReplies(key, reply, userID, groupID, groupNum)
-		robirtLastActive[groupNum] = time.Now().Add(-30 * time.Second)
+		robirtLastActive[groupNum] = time.Now()
 	} else if hongbao.MatchString(message) {
 		kv := hongbao.FindAllStringSubmatch(message, 1)[0]
 		if kv[1] == "我的天哪！土豪发红包啦！大家快抢啊！" {
@@ -148,12 +159,8 @@ func groupMessageHandle(p Params) {
 		} else {
 			sendGroupMessage(groupNum, "我的天哪！土豪发红包啦！大家快抢啊！")
 		}
-		d, _ := time.ParseDuration("300s")
-		robirtLastActive[groupNum] = time.Now().Add(d)
+		robirtLastActive[groupNum] = time.Now().Add(-300 * time.Second)
 	} else {
-		if lastActive, ok := robirtLastActive[groupNum]; ok && time.Since(lastActive).Seconds() < config.Robirt.Cdtime {
-			return
-		}
 		keys := spliteN(message)
 		keys = append(keys, message)
 		var list []string
@@ -166,17 +173,21 @@ func groupMessageHandle(p Params) {
 		}
 		selectStr := fmt.Sprintf("select reply from replies where key in (%s) and group_id = $1", strings.Join(sqlParms, ", "))
 		rows, err := db.Query(selectStr, args...)
-		if err == nil {
-			for rows.Next() {
-				var resp string
-				if err := rows.Scan(&resp); err != nil {
-					logger.Fatal(err)
-				}
-				if len(makeTokens(resp)) < 600 {
-					list = append(list, resp)
-				}
+		if err != nil {
+			return
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var resp string
+			if err := rows.Scan(&resp); err != nil {
+				logger.Println(err)
 			}
-			rows.Close()
+			if len(makeTokens(resp)) < 600 {
+				list = append(list, resp)
+			}
+		}
+		if err = rows.Err(); err != nil {
+			return
 		}
 		if length := len(list); length > 0 {
 			message := list[rand.Intn(length)]

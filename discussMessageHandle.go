@@ -35,6 +35,7 @@ func listDiscussReplies(key string, discussID, discussNum int64) {
 		reportError(err)
 		return
 	}
+	defer rows.Close()
 	var list []string
 	var i = 0
 	for rows.Next() {
@@ -67,9 +68,11 @@ func techDiscussReplies(key, reply string, userID, discussID, discussNum int64) 
 		if len([]rune(key)) < 2 && len(makeTokens(reply)) < 2 {
 			sendDiscussMessage(discussNum, "触发字太短了！")
 		} else {
-			row := db.QueryRow("select count(1) from discuss_replies where key = $1 and reply = $2 and discussion_id = $3", key, reply, discussID)
 			var count int
-			row.Scan(&count)
+			err := db.QueryRow("select count(1) from discuss_replies where key = $1 and reply = $2 and discussion_id = $3", key, reply, discussID).Scan(&count)
+			if err != nil {
+				return
+			}
 			if count == 0 {
 				trans, err := db.Begin()
 				if err != nil {
@@ -136,17 +139,18 @@ func discussMessageHandle(p Params) {
 		}
 		selectStr := fmt.Sprintf("select reply from discuss_replies where key in (%s) and discussion_id = $1", strings.Join(sqlParms, ", "))
 		rows, err := db.Query(selectStr, args...)
-		if err == nil {
-			for rows.Next() {
-				var resp string
-				if err := rows.Scan(&resp); err != nil {
-					logger.Fatal(err)
-				}
-				if len(makeTokens(resp)) < 600 {
-					list = append(list, resp)
-				}
+		if err != nil {
+			return
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var resp string
+			if err := rows.Scan(&resp); err != nil {
+				logger.Fatal(err)
 			}
-			rows.Close()
+			if len(makeTokens(resp)) < 600 {
+				list = append(list, resp)
+			}
 		}
 		if length := len(list); length > 0 {
 			message := list[rand.Intn(length)]

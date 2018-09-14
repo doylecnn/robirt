@@ -115,9 +115,11 @@ func getGroupID(groupNum int64) (groupID int64, err error) {
 		groupID = group.(Group).ID
 		return
 	}
-	row := db.QueryRow("select id, name from groups where group_number = $1", groupNum)
 	var groupName string
-	err = row.Scan(&groupID, &groupName)
+	err = db.QueryRow("select id, name from groups where group_number = $1", groupNum).Scan(&groupID, &groupName)
+	if err != nil {
+		return
+	}
 	g := Group{}
 	g.ID = groupID
 	g.GroupNum = groupNum
@@ -127,8 +129,7 @@ func getGroupID(groupNum int64) (groupID int64, err error) {
 }
 
 func getDiscussID(discussNum int64) (discussID int64, err error) {
-	row := db.QueryRow("select id from discusses where discuss_number = $1", discussNum)
-	err = row.Scan(&discussID)
+	err = db.QueryRow("select id from discusses where discuss_number = $1", discussNum).Scan(&discussID)
 	if err != nil {
 		err = db.QueryRow("insert into discusses (discuss_number) values ($1) returning id", discussNum).Scan(&discussID)
 	}
@@ -140,9 +141,11 @@ func getUserID(qqNum int64) (userID int64, err error) {
 		userID = user.(User).ID
 		return
 	}
-	row := db.QueryRow("select id, qq_name from users where qq_number = $1", qqNum)
 	var name sql.NullString
-	err = row.Scan(&userID, &name)
+	err = db.QueryRow("select id, qq_name from users where qq_number = $1", qqNum).Scan(&userID, &name)
+	if err != nil {
+		return
+	}
 	if name.Valid {
 		users.Store(qqNum, User{userID, qqNum, name.String})
 	} else {
